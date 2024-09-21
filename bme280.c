@@ -147,7 +147,7 @@ BME280_status_t BME280_get_calibration_data(BME280_handler_t *bme_handler) {
 }
 
 BME280_status_t BME280_normal_mode_enable(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct) {
-	measure_struct->mode = BME280_NORMAL_MODE;
+	measure_struct->mode = NORMAL_MODE;
 	bme_handler->current_config = measure_struct;
 
 	uint8_t write_data = (bme_handler->registers_data.config & 1) | measure_struct->filter_coeff << 2 | measure_struct->standby_time << 5;
@@ -190,7 +190,7 @@ BME280_status_t BME280_read_comp_parameters(BME280_handler_t *bme_handler) {
 }
 
 BME280_status_t BME280_once_measurement(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct) {
-	measure_struct->mode = BME280_FORCED_MODE1;
+	measure_struct->mode = FORCED_MODE;
 	bme_handler->current_config = measure_struct;
 
 	uint8_t write_data = (bme_handler->registers_data.config & 1) | measure_struct->filter_coeff << 2 | (bme_handler->registers_data.config & 0xE0);
@@ -219,7 +219,7 @@ BME280_status_t BME280_once_measurement(BME280_handler_t *bme_handler, BME280_me
 }
 
 void BME280_update_data_flow_info(BME280_measureConfig_t *measure_struct) {
-	if(measure_struct->mode == BME280_SLEEP_MODE) {
+	if(measure_struct->mode == SLEEP_MODE) {
 		measure_struct->data_flow_info.measure_time = 0.;
 		measure_struct->data_flow_info.standby_time = 0.;
 		measure_struct->data_flow_info.max_ODR = 0.;
@@ -230,7 +230,7 @@ void BME280_update_data_flow_info(BME280_measureConfig_t *measure_struct) {
 	else {
 		measure_struct->data_flow_info.measure_time = BME280_calc_measure_time(measure_struct->temp_oversamp, measure_struct->press_oversamp, \
 																			   measure_struct->hum_oversamp);
-		if(measure_struct->mode == BME280_NORMAL_MODE)
+		if(measure_struct->mode == NORMAL_MODE)
 			measure_struct->data_flow_info.standby_time = BME280_calc_standby_time(measure_struct->standby_time);
 		else
 			measure_struct->data_flow_info.standby_time = 0.;
@@ -247,7 +247,7 @@ void BME280_update_data_flow_info(BME280_measureConfig_t *measure_struct) {
 	}
 }
 
-float BME280_calc_measure_time(uint8_t temp_oversamp, uint8_t press_oversamp, uint8_t hum_oversamp) {
+float BME280_calc_measure_time(BME280_oversampling_t temp_oversamp, BME280_oversampling_t press_oversamp, BME280_oversampling_t hum_oversamp) {
 	float measure_time;
 #if CALCULATE_VALUES_MAX == 0
 	measure_time = 1. + 2. * (float)temp_oversamp + (2. * (float)press_oversamp + 0.5) * (press_oversamp != 0) + \
@@ -260,31 +260,31 @@ float BME280_calc_measure_time(uint8_t temp_oversamp, uint8_t press_oversamp, ui
 	return measure_time;
 }
 
-float BME280_calc_standby_time(uint8_t reg_data_standby) {
+float BME280_calc_standby_time(BME280_standbyTime_t reg_data_standby) {
 	float result;
 	switch(reg_data_standby) {
-		case BME280_STANDBY_1_MS:
+		case STANDBY_1MS:
 			result = 0.5;
 			break;
-		case BME280_STANDBY_63_MS:
+		case STANDBY_63MS:
 			result = 62.5;
 			break;
-		case BME280_STANDBY_125_MS:
+		case STANDBY_125MS:
 			result = 125.;
 			break;
-		case BME280_STANDBY_250_MS:
+		case STANDBY_250MS:
 			result = 250.;
 			break;
-		case BME280_STANDBY_500_MS:
+		case STANDBY_500MS:
 			result = 500.;
 			break;
-		case BME280_STANDBY_1000_MS:
+		case STANDBY_1000MS:
 			result = 1000.;
 			break;
-		case BME280_STANDBY_10_MS:
+		case STANDBY_10MS:
 			result = 10.;
 			break;
-		case BME280_STANDBY_20_MS:
+		case STANDBY_20MS:
 			result = 20.;
 	}
 
@@ -297,19 +297,19 @@ float BME280_calc_data_rate(float measure_time, float standby_time) {
 	return out_data_rate;
 }
 
-uint8_t BME280_calc_response_samples(uint8_t filter_coeff) {
+uint8_t BME280_calc_response_samples(BME280_filterCoeff_t filter_coeff) {
 	uint8_t response_samples;
 	switch(filter_coeff) {
-		case BME280_FILTER_COEFF_OFF:
+		case FILTER_OFF:
 			response_samples = 1;
 			break;
-		case BME280_FILTER_COEFF_X2:
+		case FILTER_X2:
 			response_samples = 3;
 			break;
-		case BME280_FILTER_COEFF_X4:
+		case FILTER_X4:
 			response_samples = 8;
 			break;
-		case BME280_FILTER_COEFF_X8:
+		case FILTER_X8:
 			response_samples = 11;
 			break;
 		default:
@@ -326,25 +326,25 @@ float BME280_calc_response_time(uint8_t response_samples, float out_data_rate) {
 	return response_time;
 }
 
-float BME280_calc_current_consumption(uint8_t mode, float out_data_rate, float measure_time, uint8_t temp_oversamp, uint8_t press_oversamp, \
-									  uint8_t hum_oversamp) {
+float BME280_calc_current_consumption(BME280_mode_t mode, float out_data_rate, float measure_time, BME280_oversampling_t temp_oversamp, \
+		  	  	  	  	  	  	  	  BME280_oversampling_t press_oversamp, BME280_oversampling_t hum_oversamp) {
 	float current_consumption;
 
 #if CALCULATE_VALUES_MAX == 0
-	if(mode == BME280_NORMAL_MODE)
+	if(mode == NORMAL_MODE)
 		current_consumption = BME280_STANDBY_CURRENT_TYP * (1. - measure_time * out_data_rate) + out_data_rate / 1000. * (205. + BME280_TEMP_MEAS_CURRENT * \
 							  2. * temp_oversamp + BME280_PRESS_MEAS_CURRENT * (2. * (float)press_oversamp + 0.5) * (press_oversamp != 0) + \
 							  BME280_HUM_MEAS_CURRENT * (2. * (float)hum_oversamp + 0.5) * (hum_oversamp != 0));
-	else if(mode == BME280_FORCED_MODE1)
+	else if(mode == FORCED_MODE)
 		current_consumption = BME280_SLEEP_CURRENT_TYP * (1. - measure_time * out_data_rate) + out_data_rate / 1000. * (205. + BME280_TEMP_MEAS_CURRENT * \
 							  2. * temp_oversamp + BME280_PRESS_MEAS_CURRENT * (2. * (float)press_oversamp + 0.5) * (press_oversamp != 0) + \
 							  BME280_HUM_MEAS_CURRENT * (2. * (float)hum_oversamp + 0.5) * (hum_oversamp != 0));
 #else
-	if(mode == BME280_NORMAL_MODE)
+	if(mode == NORMAL_MODE)
 		current_consumption = BME280_STANDBY_CURRENT_MAX * (1. - measure_time * out_data_rate) + out_data_rate / 1000. * (205. + BME280_TEMP_MEAS_CURRENT * \
 							  2. * temp_oversamp + BME280_PRESS_MEAS_CURRENT * (2. * (float)press_oversamp + 0.5) * (press_oversamp != 0) + \
 							  BME280_HUM_MEAS_CURRENT * (2. * (float)hum_oversamp + 0.5) * (hum_oversamp != 0));
-	else if(mode == BME280_FORCED_MODE1)
+	else if(mode == FORCED_MODE)
 		current_consumption = BME280_SLEEP_CURRENT_MAX * (1. - measure_time * out_data_rate) + out_data_rate / 1000. * (205. + BME280_TEMP_MEAS_CURRENT * \
 							  2. * temp_oversamp + BME280_PRESS_MEAS_CURRENT * (2. * (float)press_oversamp + 0.5) * (press_oversamp != 0) + \
 							  BME280_HUM_MEAS_CURRENT * (2. * (float)hum_oversamp + 0.5) * (hum_oversamp != 0));

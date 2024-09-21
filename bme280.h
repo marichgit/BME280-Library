@@ -132,8 +132,12 @@ typedef enum BME280_oversampling {
 } BME280_oversampling_t;
 
 typedef enum BME280_filterCoeff {
-	FILTER_OFF=0, X2_FILTER, X4_FILTER, X8_FILTER, X16_FILTER
+	FILTER_OFF=0, FILTER_X2, FILTER_X4, FILTER_X8, FILTER_X16
 } BME280_filterCoeff_t;
+
+typedef enum BME280_standbyTime {
+	STANDBY_1MS=0, STANDBY_63MS, STANDBY_125MS, STANDBY_250MS, STANDBY_500MS, STANDBY_1000MS, STANDBY_10MS, STANDBY_20MS
+} BME280_standbyTime_t;
 
 typedef enum BME280_mode {
 	SLEEP_MODE=0, FORCED_MODE=1, NORMAL_MODE=3
@@ -155,12 +159,12 @@ typedef struct BME280_calcInfoData {
  * @brief Struct contains measurement settings and information about data rate and current consumption.
  */
 typedef struct BME280_measureConfig {
-	uint8_t temp_oversamp;
-	uint8_t press_oversamp;
-	uint8_t hum_oversamp;
-	uint8_t filter_coeff;
-	uint8_t standby_time;
-	uint8_t mode;				/**< Mode (optional parameter if you pass the struct to functions of only one mode:
+	BME280_oversampling_t temp_oversamp;
+	BME280_oversampling_t press_oversamp;
+	BME280_oversampling_t hum_oversamp;
+	BME280_filterCoeff_t filter_coeff;
+	BME280_standbyTime_t standby_time;
+	BME280_mode_t mode;				/**< Mode (optional parameter if you pass the struct to functions of only one mode:
 	 	 	 	 	 	 	 	< BME280_once_measurement(), BME280_normal_mode_enable()) */
 	BME280_calcInfoData_t data_flow_info;	///< Calculated parameters containing information about working time periods and frequencies
 } BME280_measureConfig_t;
@@ -248,12 +252,12 @@ BME280_status_t BME280_normal_mode_enable(BME280_handler_t *bme_handler, BME280_
 BME280_status_t BME280_read_comp_parameters(BME280_handler_t *bme_handler);
 
 void BME280_update_data_flow_info(BME280_measureConfig_t *measure_struct);
-float BME280_calc_measure_time(uint8_t temp_oversamp, uint8_t press_oversamp, uint8_t hum_oversamp);
-float BME280_calc_standby_time(uint8_t reg_data_standby);
+float BME280_calc_measure_time(BME280_oversampling_t temp_oversamp, BME280_oversampling_t press_oversamp, BME280_oversampling_t hum_oversamp);
+float BME280_calc_standby_time(BME280_standbyTime_t reg_data_standby);
 float BME280_calc_data_rate(float measure_time, float standby_time);
-uint8_t BME280_calc_response_samples(uint8_t filter_coeff);
+uint8_t BME280_calc_response_samples(BME280_filterCoeff_t filter_coeff);
 float BME280_calc_response_time(uint8_t response_samples, float out_data_rate);
-float BME280_calc_current_consumption(uint8_t mode, float out_data_rate, float measure_time, uint8_t temp_oversamp, uint8_t press_oversamp, \
-									  uint8_t hum_oversamp);
+float BME280_calc_current_consumption(BME280_mode_t mode, float out_data_rate, float measure_time, BME280_oversampling_t temp_oversamp, \
+									  BME280_oversampling_t press_oversamp, BME280_oversampling_t hum_oversamp);
 
 #endif /* The end of #ifndef BME280_H_ */
