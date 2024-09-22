@@ -497,23 +497,24 @@ float BME280_calc_response_time(uint8_t response_samples, float out_data_rate) {
 float BME280_calc_current_consumption(BME280_mode_t mode, float out_data_rate, float measure_time, BME280_oversampling_t temp_oversamp, \
 		  	  	  	  	  	  	  	  BME280_oversampling_t press_oversamp, BME280_oversampling_t hum_oversamp) {
 	float current_consumption;
+	float measure_time_s = measure_time / 1000;
 
 #if CALCULATE_VALUES_MAX == 0
 	if(mode == NORMAL_MODE)
-		current_consumption = BME280_STANDBY_CURRENT_TYP * (1. - measure_time * out_data_rate) + out_data_rate / 1000. * (205. + BME280_TEMP_MEAS_CURRENT * \
+		current_consumption = BME280_STANDBY_CURRENT_TYP * (1. - measure_time_s * out_data_rate) + out_data_rate / 1000. * (205. + BME280_TEMP_MEAS_CURRENT * \
 							  2. * temp_oversamp + BME280_PRESS_MEAS_CURRENT * (2. * (float)press_oversamp + 0.5) * (press_oversamp != 0) + \
 							  BME280_HUM_MEAS_CURRENT * (2. * (float)hum_oversamp + 0.5) * (hum_oversamp != 0));
 	else if(mode == FORCED_MODE)
-		current_consumption = BME280_SLEEP_CURRENT_TYP * (1. - measure_time * out_data_rate) + out_data_rate / 1000. * (205. + BME280_TEMP_MEAS_CURRENT * \
+		current_consumption = BME280_SLEEP_CURRENT_TYP * (1. - measure_time_s * out_data_rate) + out_data_rate / 1000. * (205. + BME280_TEMP_MEAS_CURRENT * \
 							  2. * temp_oversamp + BME280_PRESS_MEAS_CURRENT * (2. * (float)press_oversamp + 0.5) * (press_oversamp != 0) + \
 							  BME280_HUM_MEAS_CURRENT * (2. * (float)hum_oversamp + 0.5) * (hum_oversamp != 0));
 #else
 	if(mode == NORMAL_MODE)
-		current_consumption = BME280_STANDBY_CURRENT_MAX * (1. - measure_time * out_data_rate) + out_data_rate / 1000. * (205. + BME280_TEMP_MEAS_CURRENT * \
+		current_consumption = BME280_STANDBY_CURRENT_MAX * (1. - measure_time_s * out_data_rate) + out_data_rate / 1000. * (205. + BME280_TEMP_MEAS_CURRENT * \
 							  2. * temp_oversamp + BME280_PRESS_MEAS_CURRENT * (2. * (float)press_oversamp + 0.5) * (press_oversamp != 0) + \
 							  BME280_HUM_MEAS_CURRENT * (2. * (float)hum_oversamp + 0.5) * (hum_oversamp != 0));
 	else if(mode == FORCED_MODE)
-		current_consumption = BME280_SLEEP_CURRENT_MAX * (1. - measure_time * out_data_rate) + out_data_rate / 1000. * (205. + BME280_TEMP_MEAS_CURRENT * \
+		current_consumption = BME280_SLEEP_CURRENT_MAX * (1. - measure_time_s * out_data_rate) + out_data_rate / 1000. * (205. + BME280_TEMP_MEAS_CURRENT * \
 							  2. * temp_oversamp + BME280_PRESS_MEAS_CURRENT * (2. * (float)press_oversamp + 0.5) * (press_oversamp != 0) + \
 							  BME280_HUM_MEAS_CURRENT * (2. * (float)hum_oversamp + 0.5) * (hum_oversamp != 0));
 #endif
