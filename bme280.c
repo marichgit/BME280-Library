@@ -155,10 +155,12 @@ int32_t BME280_compensate_temp_int32(BME280_calibData_t *calib_data, int32_t unc
 	t_fine = var1 + var2;
 	temp = (t_fine * 5 + 128) >> 8;
 
-	if(temp < BME280_TEMPERATURE_MIN)
-		temp = BME280_TEMPERATURE_MIN;
-	else if(temp > BME280_TEMPERATURE_MAX)
-		temp = BME280_TEMPERATURE_MAX;
+	int32_t temperature_min = BME280_TEMPERATURE_MIN * 100;
+	int32_t temperature_max = BME280_TEMPERATURE_MAX * 100;
+	if(temp < (temperature_min))
+		temp = temperature_min;
+	else if(temp > temperature_max)
+		temp = temperature_max;
 
 	return temp;
 }
@@ -217,6 +219,92 @@ uint32_t BME280_compensate_hum_int32(BME280_calibData_t *calib_data, int32_t unc
 	v_x1_u32r = (v_x1_u32r > 419430400 ? 419430400 : v_x1_u32r);
 
 	return (uint32_t)(v_x1_u32r >> 12);
+}
+
+double BME280_compensate_temp_double(BME280_calibData_t *calib_data, int32_t uncomp_temp) {
+	double var1;
+	double var2;
+	double temperature;
+	double temperature_min = (double)BME280_TEMPERATURE_MIN;
+	double temperature_max = (double)BME280_TEMPERATURE_MAX;
+
+	var1 = (((double)uncomp_temp) / 16384.0 - ((double)calib_data->dig_T1) / 1024.0);
+	var1 = var1 * ((double)calib_data->dig_T2);
+	var2 = (((double)uncomp_temp) / 131072.0 - ((double)calib_data->dig_T1) / 8192.0);
+	var2 = (var2 * var2) * ((double)calib_data->dig_T3);
+	t_fine = (int32_t)(var1 + var2);
+	temperature = (var1 + var2) / 5120.0;
+
+	if (temperature < temperature_min)
+	{
+		temperature = temperature_min;
+	}
+	else if (temperature > temperature_max)
+	{
+		temperature = temperature_max;
+	}
+
+	return temperature;
+}
+
+double BME280_compensate_press_double(BME280_calibData_t *calib_data, int32_t uncomp_press) {
+	double var1, var2, var3, pressure;
+	double pressure_min = (double)BME280_PRESSURE_MIN;
+	double pressure_max = (double)BME280_PRESSURE_MAX;
+
+	var1 = ((double)t_fine / 2.0) - 64000.0;
+	var2 = var1 * var1 * ((double)calib_data->dig_P6) / 32768.0;
+	var2 = var2 + var1 * ((double)calib_data->dig_P5) * 2.0;
+	var2 = (var2 / 4.0) + (((double)calib_data->dig_P4) * 65536.0);
+	var3 = ((double)calib_data->dig_P3) * var1 * var1 / 524288.0;
+	var1 = (var3 + ((double)calib_data->dig_P2) * var1) / 524288.0;
+	var1 = (1.0 + var1 / 32768.0) * ((double)calib_data->dig_P1);
+
+	if (var1 == 0)
+		return 0;
+	pressure = 1048576.0 - (double)uncomp_press;
+	pressure = (pressure - (var2 / 4096.0)) * 6250.0 / var1;
+	var1 = ((double)calib_data->dig_P9) * pressure * pressure / 2147483648.0;
+	var2 = pressure * ((double)calib_data->dig_P8) / 32768.0;
+	pressure = pressure + (var1 + var2 + ((double)calib_data->dig_P7)) / 16.0;
+
+	if (pressure < pressure_min)
+	{
+		pressure = pressure_min;
+	}
+	else if (pressure > pressure_max)
+	{
+		pressure = pressure_max;
+	}
+
+	return pressure;
+}
+
+double BME280_compensate_hum_double(BME280_calibData_t *calib_data, int32_t uncomp_hum) {
+	double humidity;
+	double humidity_min = (double)BME280_HUMIDITY_MIN;
+	double humidity_max = (double)BME280_HUMIDITY_MAX;
+	double var1, var2, var3, var4, var5, var6;
+
+	var1 = ((double)t_fine) - 76800.0;
+	var2 = (((double)calib_data->dig_H4) * 64.0 + (((double)calib_data->dig_H5) / 16384.0) * var1);
+	var3 = uncomp_hum - var2;
+	var4 = ((double)calib_data->dig_H2) / 65536.0;
+	var5 = (1.0 + (((double)calib_data->dig_H3) / 67108864.0) * var1);
+	var6 = 1.0 + (((double)calib_data->dig_H6) / 67108864.0) * var1 * var5;
+	var6 = var3 * var4 * (var5 * var6);
+	humidity = var6 * (1.0 - ((double)calib_data->dig_H1) * var6 / 524288.0);
+
+	if (humidity > humidity_max)
+	{
+		humidity = humidity_max;
+	}
+	else if (humidity < humidity_min)
+	{
+		humidity = humidity_min;
+	}
+
+	return humidity;
 }
 
 BME280_status_t BME280_read_comp_parameters(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct) {

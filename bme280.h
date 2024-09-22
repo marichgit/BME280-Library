@@ -114,10 +114,14 @@
 #define BME280_TEMP_MEAS_CURRENT		350		///< Current during temperature measurement
 
 /**
- * @brief BME280 Temperature parameters definition
+ * @brief BME280 Operating ranges definition
  */
-#define BME280_TEMPERATURE_MIN			-4000
-#define BME280_TEMPERATURE_MAX			8500
+#define BME280_TEMPERATURE_MIN			-40
+#define BME280_TEMPERATURE_MAX			85
+#define BME280_PRESSURE_MIN				30000
+#define BME280_PRESSURE_MAX				110000
+#define BME280_HUMIDITY_MIN				0
+#define BME280_HUMIDITY_MAX				100
 
 /**
  * @brief BME280 Interface selection
@@ -270,6 +274,10 @@ int32_t BME280_compensate_temp_int32(BME280_calibData_t *calib_data, int32_t unc
 uint32_t BME280_compensate_press_int64(BME280_calibData_t *calib_data, int32_t uncomp_press);
 uint32_t BME280_compensate_press_int32(BME280_calibData_t *calib_data, int32_t uncomp_press);
 uint64_t BME280_compensate_hum_int32(BME280_calibData_t *calib_data, int32_t uncomp_hum);
+
+double BME280_compensate_temp_double(BME280_calibData_t *calib_data, int32_t uncomp_temp);
+double BME280_compensate_press_double(BME280_calibData_t *calib_data, int32_t uncomp_press);
+double BME280_compensate_hum_double(BME280_calibData_t *calib_data, int32_t uncomp_hum);
 
 BME280_status_t BME280_read_comp_parameters(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct);
 BME280_status_t BME280_once_measurement(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct);
