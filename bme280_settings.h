@@ -12,6 +12,8 @@
  */
 #define ENABLE_DOUBLE_PRECISION		0
 
+#define PRESSURE_32BIT_CALC			0
+
 /**
  * @brief SPI mode setting. If SPI_3WIRE == 1 the 3-wire mode is selected.
  */

@@ -179,24 +179,23 @@ typedef struct BME280_measureConfig {
 	BME280_calcInfoData_t data_flow_info;	///< Calculated parameters containing information about working time periods and frequencies
 } BME280_measureConfig_t;
 
-/**
- * @brief Contains values of part of the sensor registers
- */
-typedef struct BME280_regDataHandler {
-	uint8_t chip_id;	///< [7:0] - chip id = 0x60
-	uint8_t ctrl_hum;	///< [2:0] - humidity oversampling
-	uint8_t status;		///< [3] - conversion is running (set); [0] - NVM data are being copying at reset and before every conversion (set)
-	uint8_t ctrl_meas;	///< [7:5] - temperature oversampling; [4:2] - pressure oversampling; [1:0] - mode
-	uint8_t config;		///< [7:5] - inactive duration time in normal mode; [4:2] - IIR filter coefficient; [0] - set 3-wire SPI interface
-	uint8_t press_msb;	///< MSB part of the raw pressure measurement output data
-	uint8_t press_lsb;	///< LSB part of the raw pressure measurement output data
-	uint8_t press_xlsb;	///< XLSB part of the raw pressure measurement output data ([3:0] - filled with zeros)
-	uint8_t temp_msb;	///< MSB part of the raw temperature measurement output data
-	uint8_t temp_lsb;	///< LSB part of the raw temperature measurement output data
-	uint8_t temp_xlsb;	///< XLSB part of the raw temperature measurement output data ([3:0] - filled with zeros)
-	uint8_t hum_msb;	///< MSB part of the raw humidity measurement output data
-	uint8_t hum_lsb;	///< LSB part of the raw humidity measurement output data
-} BME280_regDataHandler_t;
+// * @brief Contains values of part of the sensor registers
+// */
+//typedef struct BME280_regDataHandler {
+//	uint8_t chip_id;	///< [7:0] - chip id = 0x60
+//	uint8_t ctrl_hum;	///< [2:0] - humidity oversampling
+//	uint8_t status;		///< [3] - conversion is running (set); [0] - NVM data are being copying at reset and before every conversion (set)
+//	uint8_t ctrl_meas;	///< [7:5] - temperature oversampling; [4:2] - pressure oversampling; [1:0] - mode
+//	uint8_t config;		///< [7:5] - inactive duration time in normal mode; [4:2] - IIR filter coefficient; [0] - set 3-wire SPI interface
+//	uint8_t press_msb;	///< MSB part of the raw pressure measurement output data
+//	uint8_t press_lsb;	///< LSB part of the raw pressure measurement output data
+//	uint8_t press_xlsb;	///< XLSB part of the raw pressure measurement output data ([3:0] - filled with zeros)
+//	uint8_t temp_msb;	///< MSB part of the raw temperature measurement output data
+//	uint8_t temp_lsb;	///< LSB part of the raw temperature measurement output data
+//	uint8_t temp_xlsb;	///< XLSB part of the raw temperature measurement output data ([3:0] - filled with zeros)
+//	uint8_t hum_msb;	///< MSB part of the raw humidity measurement output data
+//	uint8_t hum_lsb;	///< LSB part of the raw humidity measurement output data
+//} BME280_regDataHandler_t;
 
 /**
  * @brief Contains registers (calib00..calib41) values to compensate measurement output data
@@ -247,13 +246,22 @@ typedef struct BME280_compensatedData {
 } BME280_compensatedData_t;
 
 /**
+ * @brief Contains raw data from registers united by parameters.
+ */
+typedef struct BME280_rawData {
+	int32_t uncomp_humidity;
+	int32_t uncomp_temperature;
+	int32_t uncomp_pressure;
+} BME280_rawData_t;
+
+/**
  * @brief Contains main data about the sensor
  */
 typedef struct BME280_handler {
 	uint16_t device_addr;						///< Device address
 	BME280_compensatedData_t comp_parameters;	///< Compensated measurement data
+	BME280_rawData_t uncomp_parameters;			///< Raw measurement data
 	BME280_calibData_t calibration_data;		///< Calibration values for measurement raw data compensation
-	BME280_regDataHandler_t registers_data;		///< Sensor registers values
 
 	BME280_interface_t interface_select;		///< Selected communication interface, SPI/I2C
 	void *interface_handler;					///< Pointer to interface descriptor/handler/struct
@@ -273,7 +281,7 @@ BME280_status_t BME280_enable_sleep_mode(BME280_handler_t *bme_handler);
 int32_t BME280_compensate_temp_int32(BME280_calibData_t *calib_data, int32_t uncomp_temp);
 uint32_t BME280_compensate_press_int64(BME280_calibData_t *calib_data, int32_t uncomp_press);
 uint32_t BME280_compensate_press_int32(BME280_calibData_t *calib_data, int32_t uncomp_press);
-uint64_t BME280_compensate_hum_int32(BME280_calibData_t *calib_data, int32_t uncomp_hum);
+uint32_t BME280_compensate_hum_int32(BME280_calibData_t *calib_data, int32_t uncomp_hum);
 
 double BME280_compensate_temp_double(BME280_calibData_t *calib_data, int32_t uncomp_temp);
 double BME280_compensate_press_double(BME280_calibData_t *calib_data, int32_t uncomp_press);

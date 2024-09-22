@@ -68,7 +68,6 @@ BME280_status_t BME280_init(BME280_handler_t *bme_handler, BME280_interface_t in
 		return BME280_ERROR;
 
 	if(chip_id == BME280_CHIP_ID) {
-		bme_handler->registers_data.chip_id = chip_id;
 		if(BME280_soft_reset(bme_handler) != BME280_OK)
 			return BME280_ERROR;
 
@@ -87,29 +86,20 @@ BME280_status_t BME280_soft_reset(BME280_handler_t *bme_handler) {
 	uint8_t write_reset = BME280_SOFT_RESET;
 	BME280_status_t result;
 
-	if(BME280_write_data(bme_handler, BME280_REG_RESET, 1, &write_reset, 1) == BME280_ERROR)
-		return BME280_ERROR;
-	else
-		do {
-			result = BME280_readout_data(bme_handler, BME280_REG_STATUS, 1, &bme_handler->registers_data.status, 1);
-			BME280_delay(bme_handler, BME280_WAIT_REG_UPDATE_DELAY);
-			try_temp--;
-		}
-		while((bme_handler->registers_data.status & BME280_STATUS_COPYING) && result == BME280_OK && try_temp != 0);
-	if(result == BME280_ERROR || (bme_handler->registers_data.status & BME280_STATUS_COPYING))
+	if(BME280_write_data(bme_handler, BME280_REG_RESET, 1, &write_reset, 1) != BME280_OK)
 		return BME280_ERROR;
 
-	bme_handler->registers_data.ctrl_hum = BME280_REG_RESET_STATE;
-	bme_handler->registers_data.ctrl_meas = BME280_REG_RESET_STATE;
-	bme_handler->registers_data.config = BME280_REG_RESET_STATE;
-	bme_handler->registers_data.press_msb = BME280_MSB_REG_RESET_STATE;
-	bme_handler->registers_data.press_lsb = BME280_REG_RESET_STATE;
-	bme_handler->registers_data.press_xlsb = BME280_REG_RESET_STATE;
-	bme_handler->registers_data.temp_msb = BME280_MSB_REG_RESET_STATE;
-	bme_handler->registers_data.temp_lsb = BME280_REG_RESET_STATE;
-	bme_handler->registers_data.temp_xlsb = BME280_REG_RESET_STATE;
-	bme_handler->registers_data.hum_msb = BME280_MSB_REG_RESET_STATE;
-	bme_handler->registers_data.hum_lsb = BME280_REG_RESET_STATE;
+	uint8_t status_reg;
+	do {
+		result = BME280_readout_data(bme_handler, BME280_REG_STATUS, 1, &status_reg, 1);
+		BME280_delay(bme_handler, BME280_WAIT_REG_UPDATE_DELAY);
+		try_temp--;
+	}
+	while((status_reg & BME280_STATUS_COPYING) && result == BME280_OK && try_temp != 0);
+
+	if(result == BME280_ERROR || (status_reg & BME280_STATUS_COPYING))
+		return BME280_ERROR;
+
 	return BME280_OK;
 }
 
@@ -312,18 +302,40 @@ BME280_status_t BME280_read_comp_parameters(BME280_handler_t *bme_handler, BME28
 	if(BME280_readout_data(bme_handler, BME280_REG_PRESS_MSB, BME280_MEASURMENTS_DATA_LEN, read_buffer, (uint16_t)sizeof(read_buffer)) != BME280_OK)
 		return BME280_ERROR;
 
+#if ENABLE_DOUBLE_PRECISION == 1
 	if(measure_struct->press_oversamp != MEAS_SKIP) {
-		bme_handler->registers_data.press_msb = read_buffer[0];
-		bme_handler->registers_data.press_lsb = read_buffer[1];
-		bme_handler->registers_data.press_xlsb = read_buffer[2];
+		bme_handler->uncomp_parameters.uncomp_pressure = (read_buffer[0] << 12) | (read_buffer[1] << 4) | (read_buffer[2] >> 4);
+		bme_handler->comp_parameters.pressure = BME280_compensate_press_double(&bme_handler->calibration_data, \
+																			   bme_handler->uncomp_parameters.uncomp_pressure);
 	}
-	bme_handler->registers_data.temp_msb = read_buffer[3];
-	bme_handler->registers_data.temp_lsb = read_buffer[4];
-	bme_handler->registers_data.temp_xlsb = read_buffer[5];
-	bme_handler->registers_data.hum_msb = read_buffer[6];
-	bme_handler->registers_data.hum_lsb = read_buffer[7];
-
-	//compensate registers
+	if(measure_struct->temp_oversamp != MEAS_SKIP) {
+		bme_handler->uncomp_parameters.uncomp_temperature = (read_buffer[3] << 12) | (read_buffer[4] << 4) | (read_buffer[5] >> 4);
+		bme_handler->comp_parameters.temperature = BME280_compensate_temp_double(&bme_handler->calibration_data, \
+																				 bme_handler->uncomp_parameters.uncomp_temperature);
+	}
+	if(measure_struct->hum_oversamp != MEAS_SKIP) {
+		bme_handler->uncomp_parameters.uncomp_humidity = (read_buffer[6] << 8) | read_buffer[7];
+		bme_handler->comp_parameters.humidity = BME280_compensate_hum_double(&bme_handler->calibration_data, bme_handler->uncomp_parameters.uncomp_humidity);
+	}
+#else
+	if(measure_struct->press_oversamp != MEAS_SKIP) {
+		bme_handler->uncomp_parameters.uncomp_pressure = (read_buffer[0] << 12) | (read_buffer[1] << 4) | (read_buffer[2] >> 4);
+	#if PRESSURE_32BIT_CALC == 0
+		bme_handler->comp_parameters.pressure = BME280_compensate_press_int64(&bme_handler->calibration_data, bme_handler->uncomp_parameters.uncomp_pressure);
+	#else
+		bme_handler->comp_parameters.pressure = BME280_compensate_press_int32(&bme_handler->calibration_data, bme_handler->uncomp_parameters.uncomp_pressure);
+	#endif /* End of #if PRESSURE_32BIT_CALC == 1*/
+	}
+	if(measure_struct->temp_oversamp != MEAS_SKIP) {
+		bme_handler->uncomp_parameters.uncomp_temperature = (read_buffer[3] << 12) | (read_buffer[4] << 4) | (read_buffer[5] >> 4);
+		bme_handler->comp_parameters.temperature = BME280_compensate_temp_int32(&bme_handler->calibration_data, \
+																				bme_handler->uncomp_parameters.uncomp_temperature);
+	}
+	if(measure_struct->hum_oversamp != MEAS_SKIP) {
+		bme_handler->uncomp_parameters.uncomp_humidity = (read_buffer[6] << 8) | read_buffer[7];
+		bme_handler->comp_parameters.humidity = BME280_compensate_hum_int32(&bme_handler->calibration_data, bme_handler->uncomp_parameters.uncomp_humidity);
+	}
+#endif /* End of #if ENABLE_DOUBLE_PRECISION == 1*/
 
 	return BME280_OK;
 }
@@ -332,20 +344,17 @@ BME280_status_t BME280_normal_mode_enable(BME280_handler_t *bme_handler, BME280_
 	measure_struct->mode = NORMAL_MODE;
 	bme_handler->current_config = measure_struct;
 
-	uint8_t write_data = (bme_handler->registers_data.config & 1) | measure_struct->filter_coeff << 2 | measure_struct->standby_time << 5;
+	uint8_t write_data = (SPI_3WIRE) | measure_struct->filter_coeff << 2 | measure_struct->standby_time << 5;
 	if(BME280_write_data(bme_handler, BME280_REG_CONFIG, 1, &write_data, 1) != BME280_OK)
 		return BME280_ERROR;
-	bme_handler->registers_data.config = write_data;
 
 	write_data = measure_struct->hum_oversamp;
 	if(BME280_write_data(bme_handler, BME280_REG_CTRL_HUM, 1, &write_data, 1) != BME280_OK)
 		return BME280_ERROR;
-	bme_handler->registers_data.ctrl_hum = write_data;
 
 	write_data = BME280_NORMAL_MODE | measure_struct->press_oversamp << 2 | measure_struct->temp_oversamp << 5;
 	if(BME280_write_data(bme_handler, BME280_REG_CTRL_MEAS, 1, &write_data, 1) != BME280_OK)
 		return BME280_ERROR;
-	bme_handler->registers_data.ctrl_meas = write_data;
 
 	BME280_update_data_flow_info(measure_struct);
 
@@ -356,26 +365,22 @@ BME280_status_t BME280_once_measurement(BME280_handler_t *bme_handler, BME280_me
 	measure_struct->mode = FORCED_MODE;
 	bme_handler->current_config = measure_struct;
 
-	uint8_t write_data = (bme_handler->registers_data.config & 1) | measure_struct->filter_coeff << 2 | (bme_handler->registers_data.config & 0xE0);
+	uint8_t write_data = (SPI_3WIRE) | measure_struct->filter_coeff << 2;
 	if(BME280_write_data(bme_handler, BME280_REG_CONFIG, 1, &write_data, 1) != BME280_OK)
 		return BME280_ERROR;
-	bme_handler->registers_data.config = write_data;
 
 	write_data = measure_struct->hum_oversamp;
 	if(BME280_write_data(bme_handler, BME280_REG_CTRL_HUM, 1, &write_data, 1) != BME280_OK)
 		return BME280_ERROR;
-	bme_handler->registers_data.ctrl_hum = write_data;
 
 	write_data = BME280_FORCED_MODE1 | measure_struct->press_oversamp << 2 | measure_struct->temp_oversamp << 5;
 	if(BME280_write_data(bme_handler, BME280_REG_CTRL_MEAS, 1, &write_data, 1) != BME280_OK)
 		return BME280_ERROR;
-	bme_handler->registers_data.ctrl_meas = write_data;
 
 	BME280_update_data_flow_info(measure_struct);
 	BME280_delay(bme_handler, (uint32_t)BME280_ROUND_FLOAT_TO_INT(measure_struct->data_flow_info.measure_time));
 
-	bme_handler->registers_data.ctrl_meas = bme_handler->registers_data.ctrl_meas & 0xFC;
-	if(BME280_read_comp_parameters(bme_handler) != BME280_OK)
+	if(BME280_read_comp_parameters(bme_handler, measure_struct) != BME280_OK)
 		return BME280_ERROR;
 
 	return BME280_OK;
