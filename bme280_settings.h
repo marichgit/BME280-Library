@@ -2,9 +2,20 @@
 #define BME280_SETTINGS_H_
 
 /**
- * @brief SDO pin config definition. SDO == 0 - SDO is connected to GND; SDO == 1 - SDO is connected to Vddio
+ * @brief SDO pin config. SDO == 0 - SDO is connected to GND; SDO == 1 - SDO is connected to Vddio
  */
 #define SDO 0
+
+/**
+ * @brief Measurement parameters calculation mode. If define as 0 measurement parameters will be calculated as double type.
+ * 		  It gives the best accuracy but is only recommended for PC applications.
+ */
+#define ENABLE_DOUBLE_PRECISION		0
+
+/**
+ * @brief SPI mode setting. If SPI_3WIRE == 1 the 3-wire mode is selected.
+ */
+#define SPI_3WIRE	0
 
 /**
  * @brief BME280 Settings to soft reset. Set the number of attempts to check your sensor is reseted and delay between attempts.

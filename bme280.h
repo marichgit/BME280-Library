@@ -114,6 +114,12 @@
 #define BME280_TEMP_MEAS_CURRENT		350		///< Current during temperature measurement
 
 /**
+ * @brief BME280 Temperature parameters definition
+ */
+#define BME280_TEMPERATURE_MIN			-4000
+#define BME280_TEMPERATURE_MAX			8500
+
+/**
  * @brief BME280 Interface selection
  */
 typedef enum BME280_interface {
@@ -165,7 +171,7 @@ typedef struct BME280_measureConfig {
 	BME280_filterCoeff_t filter_coeff;
 	BME280_standbyTime_t standby_time;
 	BME280_mode_t mode;				/**< Mode (optional parameter if you pass the struct to functions of only one mode:
-	 	 	 	 	 	 	 	< BME280_once_measurement(), BME280_normal_mode_enable()) */
+	 	 	 	 	 	 	 			BME280_once_measurement(), BME280_normal_mode_enable()) */
 	BME280_calcInfoData_t data_flow_info;	///< Calculated parameters containing information about working time periods and frequencies
 } BME280_measureConfig_t;
 
@@ -222,13 +228,26 @@ typedef struct BME280_calibData {
 } BME280_calibData_t;
 
 /**
- * @brief Contains main data about the sensor
+ * @brief Contains compensated measurement data. Types of data and compensation formulas depends of chosen precision.
  */
-typedef struct BME280_handler {
-	uint16_t device_addr;	///< Device address
+typedef struct BME280_compensatedData {
+#if ENABLE_DOUBLE_PRECISION == 1
+	double humidity;		///< Compensated humidity measurement value with double precision
+	double temperature;		///< Compensated temperature measurement value with double precision
+	double pressure;		///< Compensated pressure measurement value with double precision
+#else
 	uint32_t humidity;		///< Compensated humidity measurement value
 	int32_t temperature;	///< Compensated temperature measurement value
 	uint32_t pressure;		///< Compensated pressure measurement value
+#endif
+} BME280_compensatedData_t;
+
+/**
+ * @brief Contains main data about the sensor
+ */
+typedef struct BME280_handler {
+	uint16_t device_addr;						///< Device address
+	BME280_compensatedData_t comp_parameters;	///< Compensated measurement data
 	BME280_calibData_t calibration_data;		///< Calibration values for measurement raw data compensation
 	BME280_regDataHandler_t registers_data;		///< Sensor registers values
 
@@ -247,9 +266,14 @@ BME280_status_t BME280_get_calibration_data(BME280_handler_t *bme_handler);
 BME280_status_t BME280_soft_reset(BME280_handler_t *bme_handler);
 BME280_status_t BME280_enable_sleep_mode(BME280_handler_t *bme_handler);
 
+int32_t BME280_compensate_temp_int32(BME280_calibData_t *calib_data, int32_t uncomp_temp);
+uint32_t BME280_compensate_press_int64(BME280_calibData_t *calib_data, int32_t uncomp_press);
+uint32_t BME280_compensate_press_int32(BME280_calibData_t *calib_data, int32_t uncomp_press);
+uint64_t BME280_compensate_hum_int32(BME280_calibData_t *calib_data, int32_t uncomp_hum);
+
+BME280_status_t BME280_read_comp_parameters(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct);
 BME280_status_t BME280_once_measurement(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct);
 BME280_status_t BME280_normal_mode_enable(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct);
-BME280_status_t BME280_read_comp_parameters(BME280_handler_t *bme_handler);
 
 void BME280_update_data_flow_info(BME280_measureConfig_t *measure_struct);
 float BME280_calc_measure_time(BME280_oversampling_t temp_oversamp, BME280_oversampling_t press_oversamp, BME280_oversampling_t hum_oversamp);

@@ -146,6 +146,100 @@ BME280_status_t BME280_get_calibration_data(BME280_handler_t *bme_handler) {
 	return BME280_OK;
 }
 
+int32_t t_fine;
+int32_t BME280_compensate_temp_int32(BME280_calibData_t *calib_data, int32_t uncomp_temp) {
+	int32_t var1, var2, temp;
+	var1 = ((((uncomp_temp>>3) - ((int32_t)calib_data->dig_T1<<1))) * ((int32_t)calib_data->dig_T2)) >> 11;
+	var2 = (((((uncomp_temp>>4) - ((int32_t)calib_data->dig_T1)) * (uncomp_temp>>4) - ((int32_t)calib_data->dig_T1))) >> 12) * \
+		   ((int32_t)calib_data->dig_T3) >> 14;
+	t_fine = var1 + var2;
+	temp = (t_fine * 5 + 128) >> 8;
+
+	if(temp < BME280_TEMPERATURE_MIN)
+		temp = BME280_TEMPERATURE_MIN;
+	else if(temp > BME280_TEMPERATURE_MAX)
+		temp = BME280_TEMPERATURE_MAX;
+
+	return temp;
+}
+
+uint32_t BME280_compensate_press_int64(BME280_calibData_t *calib_data, int32_t uncomp_press) {
+	int64_t var1, var2, press;
+	var1 = ((int64_t)t_fine) - 128000;
+	var2 = var1 * var1 * (int64_t)calib_data->dig_P6;
+	var2 = var2 + ((var1 * (int64_t)calib_data->dig_P5)<<17);
+	var2 = var2 + (((int64_t)calib_data->dig_P4)<<35);
+	var1 = ((var1 * var1 * (int64_t)calib_data->dig_P3)>>8) + ((var1 * (int64_t)calib_data->dig_P2)<<12);
+	var1 = (((((int64_t)1)<<47)+var1)) * ((int64_t)calib_data->dig_P1)>>33;
+	if(var1 == 0)
+		return 0;
+	press = 1048576 - uncomp_press;
+	press = (((press<<31) - var2) * 3125) / var1;
+	var1 = ((int64_t)calib_data->dig_P9) * (press>>13) * (press>>13) >> 25;
+	var2 = (((int64_t)calib_data->dig_P8) * press) >> 19;
+	press = ((press + var1 + var2) >> 8) + (((int64_t)calib_data->dig_P7) << 4);
+
+	return (uint32_t)press;
+}
+
+uint32_t BME280_compensate_press_int32(BME280_calibData_t *calib_data, int32_t uncomp_press) {
+	int32_t var1, var2;
+	uint32_t press;
+	var1 = (((int32_t)t_fine) >> 1) - (int32_t)64000;
+	var2 = (((var1>>2) * (var1>>2)) >> 11) * (int32_t)calib_data->dig_P6;
+	var2 = var2 + ((var1 * ((int32_t)calib_data->dig_P5))<<1);
+	var2 = (var2>>2) + (((int32_t)calib_data->dig_P4)<<16);
+	var1 = (((calib_data->dig_P3 * (((var1>>2) * (var1>>2)) >> 13)) >> 3) + ((((int32_t)calib_data->dig_P2) * var1) >> 1)) >> 18;
+	var1 = (((32768 + var1)) * ((int32_t)calib_data->dig_P1)) >> 15;
+	if(var1 == 0)
+		return 0;
+	press = (((uint32_t)(((int32_t)1048576) - uncomp_press) - (var2 >> 12))) * 3125;
+	if(press < 0x80000000)
+		press = (press << 1) / ((uint32_t)var1);
+	else
+		press = (press / (uint32_t)var1) * 2;
+	var1 = (((int32_t)calib_data->dig_P9) * ((int32_t)(((press>>3) * (press>>3)) >> 13))) >> 12;
+	var2 = (((int32_t)(press>>2)) * ((int32_t)calib_data->dig_P8)) >> 13;
+	press = (uint32_t)((int32_t)press + ((var1 + var2 + calib_data->dig_P7) >> 4));
+
+	return press;
+}
+
+uint32_t BME280_compensate_hum_int32(BME280_calibData_t *calib_data, int32_t uncomp_hum) {
+	int32_t v_x1_u32r;
+
+	v_x1_u32r = (t_fine - ((int32_t)76800));
+	v_x1_u32r = (((((uncomp_hum << 14) - (((int32_t)calib_data->dig_H4) << 20) - (((int32_t)calib_data->dig_H5) * v_x1_u32r)) + ((int32_t)16384)) >> 15) \
+				* (((((((v_x1_u32r * ((int32_t)calib_data->dig_H6)) >> 10) * (((v_x1_u32r * ((int32_t)calib_data->dig_H3)) >> 11) + ((int32_t)32768))) \
+				>> 10) + ((int32_t)2097152)) * ((int32_t)calib_data->dig_H2) + 8192) >> 14));
+	v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) * ((int32_t)calib_data->dig_H1)) >> 4));
+	v_x1_u32r = (v_x1_u32r < 0 ? 0 : v_x1_u32r);
+	v_x1_u32r = (v_x1_u32r > 419430400 ? 419430400 : v_x1_u32r);
+
+	return (uint32_t)(v_x1_u32r >> 12);
+}
+
+BME280_status_t BME280_read_comp_parameters(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct) {
+	uint8_t read_buffer[8];
+	if(BME280_readout_data(bme_handler, BME280_REG_PRESS_MSB, BME280_MEASURMENTS_DATA_LEN, read_buffer, (uint16_t)sizeof(read_buffer)) != BME280_OK)
+		return BME280_ERROR;
+
+	if(measure_struct->press_oversamp != MEAS_SKIP) {
+		bme_handler->registers_data.press_msb = read_buffer[0];
+		bme_handler->registers_data.press_lsb = read_buffer[1];
+		bme_handler->registers_data.press_xlsb = read_buffer[2];
+	}
+	bme_handler->registers_data.temp_msb = read_buffer[3];
+	bme_handler->registers_data.temp_lsb = read_buffer[4];
+	bme_handler->registers_data.temp_xlsb = read_buffer[5];
+	bme_handler->registers_data.hum_msb = read_buffer[6];
+	bme_handler->registers_data.hum_lsb = read_buffer[7];
+
+	//compensate registers
+
+	return BME280_OK;
+}
+
 BME280_status_t BME280_normal_mode_enable(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct) {
 	measure_struct->mode = NORMAL_MODE;
 	bme_handler->current_config = measure_struct;
@@ -166,25 +260,6 @@ BME280_status_t BME280_normal_mode_enable(BME280_handler_t *bme_handler, BME280_
 	bme_handler->registers_data.ctrl_meas = write_data;
 
 	BME280_update_data_flow_info(measure_struct);
-
-	return BME280_OK;
-}
-
-BME280_status_t BME280_read_comp_parameters(BME280_handler_t *bme_handler) {
-	uint8_t read_buffer[8];
-	if(BME280_readout_data(bme_handler, BME280_REG_PRESS_MSB, BME280_MEASURMENTS_DATA_LEN, read_buffer, (uint16_t)sizeof(read_buffer)) != BME280_OK)
-		return BME280_ERROR;
-
-	bme_handler->registers_data.press_msb = read_buffer[0];
-	bme_handler->registers_data.press_lsb = read_buffer[1];
-	bme_handler->registers_data.press_xlsb = read_buffer[2];
-	bme_handler->registers_data.temp_msb = read_buffer[3];
-	bme_handler->registers_data.temp_lsb = read_buffer[4];
-	bme_handler->registers_data.temp_xlsb = read_buffer[5];
-	bme_handler->registers_data.hum_msb = read_buffer[6];
-	bme_handler->registers_data.hum_lsb = read_buffer[7];
-
-	//compensate registers
 
 	return BME280_OK;
 }
