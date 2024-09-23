@@ -8,9 +8,15 @@
 /**
  * @brief Function-like macro converting number from float to int32
  * @param[in] FLOAT_NUM Float number
- * @return Converted to int32 number
  */
 #define BME280_ROUND_FLOAT_TO_INT(FLOAT_NUM) (int32_t)((FLOAT_NUM / (float)(int32_t)FLOAT_NUM) > 1 ? ((float)(int32_t)FLOAT_NUM + 1.) : (float)(int32_t)FLOAT_NUM)
+
+/**
+ * @brief Function-like macro concatenating 2 bytes: MSB and LSB
+ * @param[in] MSB Most significant byte
+ * @param[in] LSB Low significant byte
+ */
+#define BME280_CONCAT_BYTES(MSB, LSB)             (((uint16_t)MSB << 8) | (uint16_t)LSB)
 
 /**
  * @brief BME280 I2C Device address definition. SDO is set in the settings h-file
@@ -45,7 +51,7 @@
  * @brief
  */
 #define BME280_DATA_LEN_FROM_CALIB00	26
-#define BME280_DATA_LEN_FROM_CALIB26	16
+#define BME280_DATA_LEN_FROM_CALIB26	7
 #define BME280_MEASURMENTS_DATA_LEN		8
 
 /**
@@ -179,23 +185,24 @@ typedef struct BME280_measureConfig {
 	BME280_calcInfoData_t data_flow_info;	///< Calculated parameters containing information about working time periods and frequencies
 } BME280_measureConfig_t;
 
-// * @brief Contains values of part of the sensor registers
-// */
-//typedef struct BME280_regDataHandler {
-//	uint8_t chip_id;	///< [7:0] - chip id = 0x60
-//	uint8_t ctrl_hum;	///< [2:0] - humidity oversampling
-//	uint8_t status;		///< [3] - conversion is running (set); [0] - NVM data are being copying at reset and before every conversion (set)
-//	uint8_t ctrl_meas;	///< [7:5] - temperature oversampling; [4:2] - pressure oversampling; [1:0] - mode
-//	uint8_t config;		///< [7:5] - inactive duration time in normal mode; [4:2] - IIR filter coefficient; [0] - set 3-wire SPI interface
-//	uint8_t press_msb;	///< MSB part of the raw pressure measurement output data
-//	uint8_t press_lsb;	///< LSB part of the raw pressure measurement output data
-//	uint8_t press_xlsb;	///< XLSB part of the raw pressure measurement output data ([3:0] - filled with zeros)
-//	uint8_t temp_msb;	///< MSB part of the raw temperature measurement output data
-//	uint8_t temp_lsb;	///< LSB part of the raw temperature measurement output data
-//	uint8_t temp_xlsb;	///< XLSB part of the raw temperature measurement output data ([3:0] - filled with zeros)
-//	uint8_t hum_msb;	///< MSB part of the raw humidity measurement output data
-//	uint8_t hum_lsb;	///< LSB part of the raw humidity measurement output data
-//} BME280_regDataHandler_t;
+/*
+ * @brief Contains values of part of the sensor registers
+ *
+typedef struct BME280_regDataHandler {
+	uint8_t chip_id;	///< [7:0] - chip id = 0x60
+	uint8_t ctrl_hum;	///< [2:0] - humidity oversampling
+	uint8_t status;		///< [3] - conversion is running (set); [0] - NVM data are being copying at reset and before every conversion (set)
+	uint8_t ctrl_meas;	///< [7:5] - temperature oversampling; [4:2] - pressure oversampling; [1:0] - mode
+	uint8_t config;		///< [7:5] - inactive duration time in normal mode; [4:2] - IIR filter coefficient; [0] - set 3-wire SPI interface
+	uint8_t press_msb;	///< MSB part of the raw pressure measurement output data
+	uint8_t press_lsb;	///< LSB part of the raw pressure measurement output data
+	uint8_t press_xlsb;	///< XLSB part of the raw pressure measurement output data ([3:0] - filled with zeros)
+	uint8_t temp_msb;	///< MSB part of the raw temperature measurement output data
+	uint8_t temp_lsb;	///< LSB part of the raw temperature measurement output data
+	uint8_t temp_xlsb;	///< XLSB part of the raw temperature measurement output data ([3:0] - filled with zeros)
+	uint8_t hum_msb;	///< MSB part of the raw humidity measurement output data
+	uint8_t hum_lsb;	///< LSB part of the raw humidity measurement output data
+} BME280_regDataHandler_t; */
 
 /**
  * @brief Contains registers (calib00..calib41) values to compensate measurement output data
@@ -227,7 +234,7 @@ typedef struct BME280_calibData {
 	uint8_t dig_H3;
 	int16_t dig_H4;
 	int16_t dig_H5;
-	int16_t dig_H6;
+	int8_t dig_H6;
 } BME280_calibData_t;
 
 /**
