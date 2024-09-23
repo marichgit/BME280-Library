@@ -30,29 +30,29 @@
 /**
  * @brief BME280 Register addresses definition
  */
-#define BME280_REG_CALIB00		0x88
-#define BME280_REG_ID 			0xD0
-#define BME280_REG_RESET		0xE0
-#define BME280_REG_CALIB26		0xE1
-#define BME280_REG_CTRL_HUM		0xF2
-#define BME280_REG_STATUS		0xF3
-#define BME280_REG_CTRL_MEAS	0xF4
-#define BME280_REG_CONFIG		0xF5
-#define BME280_REG_PRESS_MSB	0xF7
-#define BME280_REG_PRESS_LSB	0xF8
-#define BME280_REG_PRESS_XLSB	0xF9
-#define BME280_REG_TEMP_MSB		0xFA
-#define BME280_REG_TEMP_LSB		0xFB
-#define BME280_REG_TEMP_XLSB	0xFC
-#define BME280_REG_HUM_MSB		0xFD
-#define BME280_REG_HUM_LSB		0xFE
+#define BME280_REG_CALIB00		0x88	///< Start register of the first calibration data part
+#define BME280_REG_ID 			0xD0	///< Register contains chip id
+#define BME280_REG_RESET		0xE0	///< The register is used to soft reset sensor
+#define BME280_REG_CALIB26		0xE1	///< Start register of the second calibration data part
+#define BME280_REG_CTRL_HUM		0xF2	///< Contains humidity oversampling setting
+#define BME280_REG_STATUS		0xF3	///< Contains status of measuring and copying data from NVM to image registers status
+#define BME280_REG_CTRL_MEAS	0xF4	///< Contains temperature and pressure oversampling settings and operating mode setting
+#define BME280_REG_CONFIG		0xF5	///< The register is used for configuring standby time, filter coefficient and SPI 3-wire mode
+#define BME280_REG_PRESS_MSB	0xF7	///< Contains MSB part of of the raw pressure measurement data
+#define BME280_REG_PRESS_LSB	0xF8	///< Contains LSB part of of the raw pressure measurement data
+#define BME280_REG_PRESS_XLSB	0xF9	///< Contains XLSB part of of the raw pressure measurement data
+#define BME280_REG_TEMP_MSB		0xFA	///< Contains MSB part of of the raw temperature measurement data
+#define BME280_REG_TEMP_LSB		0xFB	///< Contains LSB part of of the raw temperature measurement data
+#define BME280_REG_TEMP_XLSB	0xFC	///< Contains XLSB part of of the raw temperature measurement data
+#define BME280_REG_HUM_MSB		0xFD	///< Contains MSB part of of the raw humidity measurement data
+#define BME280_REG_HUM_LSB		0xFE	///< Contains LSB part of of the raw humidity measurement data
 
 /**
  * @brief
  */
-#define BME280_DATA_LEN_FROM_CALIB00	26
-#define BME280_DATA_LEN_FROM_CALIB26	7
-#define BME280_MEASURMENTS_DATA_LEN		8
+#define BME280_DATA_LEN_FROM_CALIB00	26		///< Length of the first calibration data part
+#define BME280_DATA_LEN_FROM_CALIB26	7		///< Length of the second calibration data part
+#define BME280_MEASURMENTS_DATA_LEN		8		///< Length of the raw measurement output data
 
 /**
  * @brief BME280 Register reset values
@@ -63,7 +63,7 @@
 #define BME280_MSB_REG_RESET_STATE 	0x80
 
 /**
- * @brief BME280 Oversampling values definition
+ * @brief BME280 Oversampling registers content definition
  */
 #define BME280_MEAS_SKIP		0x00
 #define BME280_X1_OVERSAMPLING	0x01
@@ -103,7 +103,7 @@
 #define BME280_FILTER_COEFF_X16	0x04
 
 /**
- * @brief	BME280 Status register bits
+ * @brief	BME280 Status register bits definition
  */
 #define BME280_STATUS_COPYING		0x01
 #define BME280_STATUS_CONVERSION	0x04
@@ -122,15 +122,15 @@
 /**
  * @brief BME280 Operating ranges definition
  */
-#define BME280_TEMPERATURE_MIN			-40
-#define BME280_TEMPERATURE_MAX			85
-#define BME280_PRESSURE_MIN				30000
-#define BME280_PRESSURE_MAX				110000
-#define BME280_HUMIDITY_MIN				0
-#define BME280_HUMIDITY_MAX				100
+#define BME280_TEMPERATURE_MIN			-40			///< Temperature minimum of operating range in degrees
+#define BME280_TEMPERATURE_MAX			85			///< Temperature maximum of operating range in degrees
+#define BME280_PRESSURE_MIN				30000		///< Pressure minimum of operating range in Pa
+#define BME280_PRESSURE_MAX				110000		///< Pressure maximum of operating range in Pa
+#define BME280_HUMIDITY_MIN				0			///< Humidity minimum of operating range in %RH
+#define BME280_HUMIDITY_MAX				100			///< Humidity maximum of operating range in %RH
 
 /**
- * @brief BME280 Interface selection
+ * @brief BME280 Interface selection between I2C and SPI enum
  */
 typedef enum BME280_interface {
 	I2C=0, SPI
@@ -143,18 +143,30 @@ typedef enum BME280_status {
 	BME280_OK=0, BME280_ERROR
 } BME280_status_t;
 
+/**
+ * @brief BME280 oversampling enum
+ */
 typedef enum BME280_oversampling {
 	MEAS_SKIP=0, X1_OVERSAMP, X2_OVERSAMP, X4_OVERSAMP, X8_OVERSAMP, X16_OVERSAMP
 } BME280_oversampling_t;
 
+/**
+ * @brief BME280 filter coefficients enum
+ */
 typedef enum BME280_filterCoeff {
 	FILTER_OFF=0, FILTER_X2, FILTER_X4, FILTER_X8, FILTER_X16
 } BME280_filterCoeff_t;
 
+/**
+ * @brief BME280 standby time enum
+ */
 typedef enum BME280_standbyTime {
 	STANDBY_1MS=0, STANDBY_63MS, STANDBY_125MS, STANDBY_250MS, STANDBY_500MS, STANDBY_1000MS, STANDBY_10MS, STANDBY_20MS
 } BME280_standbyTime_t;
 
+/**
+ * @brief BME280 operating modes enum
+ */
 typedef enum BME280_mode {
 	SLEEP_MODE=0, FORCED_MODE=1, NORMAL_MODE=3
 } BME280_mode_t;
@@ -168,41 +180,22 @@ typedef struct BME280_calcInfoData {
 	float max_ODR;					///< Maximum output data rate (Hz)
 	uint8_t IIR_response_samples;	///< Number of samples to reach 75% of step response with initialized IIR filter
 	float IIR_response_time;		///< Response time using IIR filter (to reach 75% of a step response)
-	float current_consumption;		///< Current consumption
+	float current_consumption;		///< Sensor current consumption
 } BME280_calcInfoData_t;
 
 /**
  * @brief Struct contains measurement settings and information about data rate and current consumption.
  */
 typedef struct BME280_measureConfig {
-	BME280_oversampling_t temp_oversamp;
-	BME280_oversampling_t press_oversamp;
-	BME280_oversampling_t hum_oversamp;
-	BME280_filterCoeff_t filter_coeff;
-	BME280_standbyTime_t standby_time;
-	BME280_mode_t mode;				/**< Mode (optional parameter if you pass the struct to functions of only one mode:
-	 	 	 	 	 	 	 			BME280_once_measurement(), BME280_normal_mode_enable()) */
+	BME280_oversampling_t temp_oversamp;	///< Temperature oversampling setting
+	BME280_oversampling_t press_oversamp;	///< Pressure oversampling setting
+	BME280_oversampling_t hum_oversamp;		///< Humidity oversampling setting
+	BME280_filterCoeff_t filter_coeff;		///< Filter coefficient setting
+	BME280_standbyTime_t standby_time;		///< Standby time setting
+	BME280_mode_t mode;					/**< Operating mode (optional parameter if you pass the struct to functions of only one mode:
+	 	 	 	 	 	 	 				BME280_once_measurement(), BME280_normal_mode_enable()) */
 	BME280_calcInfoData_t data_flow_info;	///< Calculated parameters containing information about working time periods and frequencies
 } BME280_measureConfig_t;
-
-/*
- * @brief Contains values of part of the sensor registers
- *
-typedef struct BME280_regDataHandler {
-	uint8_t chip_id;	///< [7:0] - chip id = 0x60
-	uint8_t ctrl_hum;	///< [2:0] - humidity oversampling
-	uint8_t status;		///< [3] - conversion is running (set); [0] - NVM data are being copying at reset and before every conversion (set)
-	uint8_t ctrl_meas;	///< [7:5] - temperature oversampling; [4:2] - pressure oversampling; [1:0] - mode
-	uint8_t config;		///< [7:5] - inactive duration time in normal mode; [4:2] - IIR filter coefficient; [0] - set 3-wire SPI interface
-	uint8_t press_msb;	///< MSB part of the raw pressure measurement output data
-	uint8_t press_lsb;	///< LSB part of the raw pressure measurement output data
-	uint8_t press_xlsb;	///< XLSB part of the raw pressure measurement output data ([3:0] - filled with zeros)
-	uint8_t temp_msb;	///< MSB part of the raw temperature measurement output data
-	uint8_t temp_lsb;	///< LSB part of the raw temperature measurement output data
-	uint8_t temp_xlsb;	///< XLSB part of the raw temperature measurement output data ([3:0] - filled with zeros)
-	uint8_t hum_msb;	///< MSB part of the raw humidity measurement output data
-	uint8_t hum_lsb;	///< LSB part of the raw humidity measurement output data
-} BME280_regDataHandler_t; */
 
 /**
  * @brief Contains registers (calib00..calib41) values to compensate measurement output data
@@ -256,9 +249,9 @@ typedef struct BME280_compensatedData {
  * @brief Contains raw data from registers united by parameters.
  */
 typedef struct BME280_rawData {
-	int32_t uncomp_humidity;
-	int32_t uncomp_temperature;
-	int32_t uncomp_pressure;
+	int32_t uncomp_humidity;		///< Raw humidity output data
+	int32_t uncomp_temperature;		///< Raw temperature output data
+	int32_t uncomp_pressure;		///< Raw pressure output data
 } BME280_rawData_t;
 
 /**
@@ -306,5 +299,24 @@ uint8_t BME280_calc_response_samples(BME280_filterCoeff_t filter_coeff);
 float BME280_calc_response_time(uint8_t response_samples, float out_data_rate);
 float BME280_calc_current_consumption(BME280_mode_t mode, float out_data_rate, float measure_time, BME280_oversampling_t temp_oversamp, \
 									  BME280_oversampling_t press_oversamp, BME280_oversampling_t hum_oversamp);
+
+/* (No need to use this structure but saved just in case)
+ * @brief Contains values of part of the sensor registers
+ *
+typedef struct BME280_regDataHandler {
+	uint8_t chip_id;	///< [7:0] - chip id = 0x60
+	uint8_t ctrl_hum;	///< [2:0] - humidity oversampling
+	uint8_t status;		///< [3] - conversion is running (set); [0] - NVM data are being copying at reset and before every conversion (set)
+	uint8_t ctrl_meas;	///< [7:5] - temperature oversampling; [4:2] - pressure oversampling; [1:0] - mode
+	uint8_t config;		///< [7:5] - inactive duration time in normal mode; [4:2] - IIR filter coefficient; [0] - set 3-wire SPI interface
+	uint8_t press_msb;	///< MSB part of the raw pressure measurement output data
+	uint8_t press_lsb;	///< LSB part of the raw pressure measurement output data
+	uint8_t press_xlsb;	///< XLSB part of the raw pressure measurement output data ([3:0] - filled with zeros)
+	uint8_t temp_msb;	///< MSB part of the raw temperature measurement output data
+	uint8_t temp_lsb;	///< LSB part of the raw temperature measurement output data
+	uint8_t temp_xlsb;	///< XLSB part of the raw temperature measurement output data ([3:0] - filled with zeros)
+	uint8_t hum_msb;	///< MSB part of the raw humidity measurement output data
+	uint8_t hum_lsb;	///< LSB part of the raw humidity measurement output data
+} BME280_regDataHandler_t; */
 
 #endif /* The end of #ifndef BME280_H_ */
