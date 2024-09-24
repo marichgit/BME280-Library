@@ -269,28 +269,32 @@ typedef struct BME280_handler {
 	BME280_measureConfig_t *current_config;		///< Pointer to struct containing current measurement config
 } BME280_handler_t;
 
+/* User defined functions for interface communication and performing delay */
 void BME280_delay(BME280_handler_t *bme_handler, uint32_t delay);
 BME280_status_t BME280_readout_data(BME280_handler_t *bme_handler, uint8_t reg_addr, uint16_t size, uint8_t *read_buffer, uint16_t read_data_len);
 BME280_status_t BME280_write_data(BME280_handler_t *bme_handler, uint8_t reg_addr, uint16_t size, uint8_t *write_data, uint16_t write_data_len);
 
+/* Main API functions*/
 BME280_status_t BME280_init(BME280_handler_t *bme_handler, BME280_interface_t interface_select, void *interface_handler);
 BME280_status_t BME280_get_calibration_data(BME280_handler_t *bme_handler);
 BME280_status_t BME280_soft_reset(BME280_handler_t *bme_handler);
 BME280_status_t BME280_enable_sleep_mode(BME280_handler_t *bme_handler);
+BME280_status_t BME280_read_comp_parameters(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct);
+BME280_status_t BME280_once_measurement(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct);
+BME280_status_t BME280_normal_mode_enable(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct);
 
+/* Raw data compensation functions using int calculations */
 int32_t BME280_compensate_temp_int32(BME280_calibData_t *calib_data, int32_t uncomp_temp);
 uint32_t BME280_compensate_press_int64(BME280_calibData_t *calib_data, int32_t uncomp_press);
 uint32_t BME280_compensate_press_int32(BME280_calibData_t *calib_data, int32_t uncomp_press);
 uint32_t BME280_compensate_hum_int32(BME280_calibData_t *calib_data, int32_t uncomp_hum);
 
+/* Raw data compensation functions using double calculations */
 double BME280_compensate_temp_double(BME280_calibData_t *calib_data, int32_t uncomp_temp);
 double BME280_compensate_press_double(BME280_calibData_t *calib_data, int32_t uncomp_press);
 double BME280_compensate_hum_double(BME280_calibData_t *calib_data, int32_t uncomp_hum);
 
-BME280_status_t BME280_read_comp_parameters(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct);
-BME280_status_t BME280_once_measurement(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct);
-BME280_status_t BME280_normal_mode_enable(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct);
-
+/* Data flow parameters and current consumption calculation functions */
 void BME280_update_data_flow_info(BME280_measureConfig_t *measure_struct);
 float BME280_calc_measure_time(BME280_oversampling_t temp_oversamp, BME280_oversampling_t press_oversamp, BME280_oversampling_t hum_oversamp);
 float BME280_calc_standby_time(BME280_standbyTime_t reg_data_standby);

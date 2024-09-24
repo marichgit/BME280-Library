@@ -4,7 +4,7 @@
 #include "main.h"
 
 /**
- * @brief This functions is used to perform a delay
+ * @brief This functions is used to perform a delay. You should rewrite it if you want to use other delay function.
  *
  * @param[in] bme_handler: Pointer to BME280 Handler structure
  * @param[in] delay: Time delay in ms
@@ -45,13 +45,13 @@ __weak BME280_status_t BME280_readout_data(BME280_handler_t *bme_handler, uint8_
  * @return Function result status
  */
 __weak BME280_status_t BME280_write_data(BME280_handler_t *bme_handler, uint8_t reg_addr, uint16_t size, uint8_t *write_data, uint16_t write_data_len) {
-	if(size == 0 || size > write_data_len || bme_handler == NULL || write_data == NULL)
+	if(size == 0 || size > write_data_len || bme_handler == NULL || write_data == NULL)		// Checking input data correctness
 		return BME280_ERROR;
 
 	uint8_t *write_buffer;
 	size_t write_len = (size_t)size*2;
 
-	write_buffer = malloc(write_len);
+	write_buffer = malloc(write_len);	 	// Allocating and filling buffer "register addr, data, ..."
 	if(write_buffer == NULL)
 		return BME280_ERROR;
 	uint8_t temp_reg = reg_addr;
@@ -64,12 +64,12 @@ __weak BME280_status_t BME280_write_data(BME280_handler_t *bme_handler, uint8_t 
 		}
 	}
 
-	BME280_status_t result;
+	BME280_status_t result;			// Sending data result variable
 	result = HAL_I2C_Master_Transmit((I2C_HandleTypeDef *)bme_handler->interface_handler, bme_handler->device_addr << 1, write_buffer, \
-									write_len, HAL_MAX_DELAY);
-	free(write_buffer);
+									write_len, HAL_MAX_DELAY);		// Sending filled buffer to the sensor
+	free(write_buffer);			// Freeing buffer memory
 
-	if(result == BME280_ERROR)
+	if(result != HAL_OK)		// Check sending data result variable
 		return BME280_ERROR;
 
 	return BME280_OK;
@@ -85,18 +85,19 @@ __weak BME280_status_t BME280_write_data(BME280_handler_t *bme_handler, uint8_t 
  * @return Function result status
  */
 BME280_status_t BME280_init(BME280_handler_t *bme_handler, BME280_interface_t interface_select, void *interface_handler) {
-	bme_handler->device_addr = BME280_DEV_ADDR;
-	bme_handler->interface_select = interface_select;
-	bme_handler->interface_handler = interface_handler;
+	if(interface_select == I2C)
+		bme_handler->device_addr = BME280_DEV_ADDR;			// Set I2C device address
+	bme_handler->interface_select = interface_select;		// Set selected interface
+	bme_handler->interface_handler = interface_handler;		// Set pointer to interface handler structure
 	uint8_t chip_id;
-	if(BME280_readout_data(bme_handler, BME280_REG_ID, 1, &chip_id, 1) != BME280_OK)
+	if(BME280_readout_data(bme_handler, BME280_REG_ID, 1, &chip_id, 1) != BME280_OK)	// Check chip id of the device
 		return BME280_ERROR;
 
 	if(chip_id == BME280_CHIP_ID) {
-		if(BME280_soft_reset(bme_handler) != BME280_OK)
+		if(BME280_soft_reset(bme_handler) != BME280_OK)		// If chip id is correct reset sensor
 			return BME280_ERROR;
 
-		if(BME280_get_calibration_data(bme_handler) != BME280_OK)
+		if(BME280_get_calibration_data(bme_handler) != BME280_OK)	// then get calibration data
 			return BME280_ERROR;
 	}
 	else
@@ -113,22 +114,22 @@ BME280_status_t BME280_init(BME280_handler_t *bme_handler, BME280_interface_t in
  * @return Function result status
  */
 BME280_status_t BME280_soft_reset(BME280_handler_t *bme_handler) {
-	uint8_t try_temp = BME280_TRY_ATTEMPTS_TO_CHECK_REG;
-	uint8_t write_reset = BME280_SOFT_RESET;
-	BME280_status_t result;
+	uint8_t try_temp = BME280_TRY_ATTEMPTS_TO_CHECK_REG;	// Number of attempts to check sensor is reseted variable
+	uint8_t write_reset = BME280_SOFT_RESET;				// Byte containing soft reset command
+	BME280_status_t result;									// Function result variable
 
-	if(BME280_write_data(bme_handler, BME280_REG_RESET, 1, &write_reset, 1) != BME280_OK)
+	if(BME280_write_data(bme_handler, BME280_REG_RESET, 1, &write_reset, 1) != BME280_OK)	// Send soft reset command to your sensor
 		return BME280_ERROR;
 
-	uint8_t status_reg;
+	uint8_t status_reg;		// Received status register data
 	do {
-		result = BME280_readout_data(bme_handler, BME280_REG_STATUS, 1, &status_reg, 1);
-		BME280_delay(bme_handler, BME280_WAIT_REG_UPDATE_DELAY);
-		try_temp--;
+		BME280_delay(bme_handler, BME280_WAIT_REG_UPDATE_DELAY);	// Wait for delay time between attempts to check sensor is reseted (ms)
+		result = BME280_readout_data(bme_handler, BME280_REG_STATUS, 1, &status_reg, 1);	// Read out status register data
+		try_temp--;		// Decrement number of attempts variable
 	}
-	while((status_reg & BME280_STATUS_COPYING) && result == BME280_OK && try_temp != 0);
-
-	if(result == BME280_ERROR || (status_reg & BME280_STATUS_COPYING))
+	while((status_reg & BME280_STATUS_COPYING) && result == BME280_OK && try_temp != 0);	// Check status register data, status of performed function and
+																							// number of attempts
+	if(result == BME280_ERROR || (status_reg & BME280_STATUS_COPYING))	// If status register data isn't correct or function returned error return error
 		return BME280_ERROR;
 
 	return BME280_OK;
@@ -141,8 +142,9 @@ BME280_status_t BME280_soft_reset(BME280_handler_t *bme_handler) {
  * @return Function result status
  */
 BME280_status_t BME280_get_calibration_data(BME280_handler_t *bme_handler) {
-	uint8_t read_buffer[26];
+	uint8_t read_buffer[26];	// Buffer into which calibration data is written
 
+	// Read out the first part of calibration data from registers to the corresponding structure
 	if(BME280_readout_data(bme_handler, BME280_REG_CALIB00, BME280_DATA_LEN_FROM_CALIB00, read_buffer, (uint16_t)sizeof(read_buffer)) == BME280_ERROR)
 		return BME280_ERROR;
 	else {
@@ -160,6 +162,7 @@ BME280_status_t BME280_get_calibration_data(BME280_handler_t *bme_handler) {
 		bme_handler->calibration_data.dig_P9 = (int16_t)BME280_CONCAT_BYTES(read_buffer[23], read_buffer[22]);
 		bme_handler->calibration_data.dig_H1 = read_buffer[25];
 	}
+	// Read out the second part of calibration data from registers to the corresponding structure
 	if(BME280_readout_data(bme_handler, BME280_REG_CALIB26, BME280_DATA_LEN_FROM_CALIB26, read_buffer, (uint16_t)sizeof(read_buffer)) == BME280_ERROR)
 		return BME280_ERROR;
 	else {
@@ -169,6 +172,124 @@ BME280_status_t BME280_get_calibration_data(BME280_handler_t *bme_handler) {
 		bme_handler->calibration_data.dig_H5 = (int16_t)((uint16_t)read_buffer[4] >> 4 | (uint16_t)read_buffer[5] << 4);
 		bme_handler->calibration_data.dig_H6 = (int8_t)read_buffer[6];
 	}
+
+	return BME280_OK;
+}
+
+/**
+ * @brief Function is used to read out measurement raw data, compensate necessary parameters and write it to corresponding structure.
+ *
+ * @param[in,out] bme_handler: Pointer to BME280 Handler structure
+ * @param[in] measure_struct: Pointer to measurement config structure
+ * @return Function result status
+ */
+BME280_status_t BME280_read_comp_parameters(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct) {
+	uint8_t read_buffer[8];		// Buffer into which raw measurement data is written
+	// Read out measurement raw output data to the buffer
+	if(BME280_readout_data(bme_handler, BME280_REG_PRESS_MSB, BME280_MEASURMENTS_DATA_LEN, read_buffer, (uint16_t)sizeof(read_buffer)) != BME280_OK)
+		return BME280_ERROR;
+
+#if ENABLE_DOUBLE_PRECISION == 1	// If compensation using double calculation setting is set to 1
+	if(measure_struct->press_oversamp != MEAS_SKIP) {
+		bme_handler->uncomp_parameters.uncomp_pressure = (read_buffer[0] << 12) | (read_buffer[1] << 4) | (read_buffer[2] >> 4);
+		bme_handler->comp_parameters.pressure = BME280_compensate_press_double(&bme_handler->calibration_data, \
+																			   bme_handler->uncomp_parameters.uncomp_pressure);
+	}
+	if(measure_struct->temp_oversamp != MEAS_SKIP) {
+		bme_handler->uncomp_parameters.uncomp_temperature = (read_buffer[3] << 12) | (read_buffer[4] << 4) | (read_buffer[5] >> 4);
+		bme_handler->comp_parameters.temperature = BME280_compensate_temp_double(&bme_handler->calibration_data, \
+																				 bme_handler->uncomp_parameters.uncomp_temperature);
+	}
+	if(measure_struct->hum_oversamp != MEAS_SKIP) {
+		bme_handler->uncomp_parameters.uncomp_humidity = (read_buffer[6] << 8) | read_buffer[7];
+		bme_handler->comp_parameters.humidity = BME280_compensate_hum_double(&bme_handler->calibration_data, bme_handler->uncomp_parameters.uncomp_humidity);
+	}
+#else	// use int calculation for compensation
+	if(measure_struct->press_oversamp != MEAS_SKIP) {
+		bme_handler->uncomp_parameters.uncomp_pressure = (read_buffer[0] << 12) | (read_buffer[1] << 4) | (read_buffer[2] >> 4);
+	#if PRESSURE_32BIT_CALC == 0
+		bme_handler->comp_parameters.pressure = BME280_compensate_press_int64(&bme_handler->calibration_data, bme_handler->uncomp_parameters.uncomp_pressure);
+	#else
+		bme_handler->comp_parameters.pressure = BME280_compensate_press_int32(&bme_handler->calibration_data, bme_handler->uncomp_parameters.uncomp_pressure);
+	#endif /* End of #if PRESSURE_32BIT_CALC == 1*/
+	}
+	if(measure_struct->temp_oversamp != MEAS_SKIP) {
+		bme_handler->uncomp_parameters.uncomp_temperature = (read_buffer[3] << 12) | (read_buffer[4] << 4) | (read_buffer[5] >> 4);
+		bme_handler->comp_parameters.temperature = BME280_compensate_temp_int32(&bme_handler->calibration_data, \
+																				bme_handler->uncomp_parameters.uncomp_temperature);
+	}
+	if(measure_struct->hum_oversamp != MEAS_SKIP) {
+		bme_handler->uncomp_parameters.uncomp_humidity = (read_buffer[6] << 8) | read_buffer[7];
+		bme_handler->comp_parameters.humidity = BME280_compensate_hum_int32(&bme_handler->calibration_data, bme_handler->uncomp_parameters.uncomp_humidity);
+	}
+#endif /* End of #if ENABLE_DOUBLE_PRECISION == 1*/
+
+	return BME280_OK;
+}
+
+/**
+ * @brief The function is used to configure your sensor, enable normal mode (periodic measurements), calculate time parameters and current consumption.
+ *
+ * @param[in,out] bme_handler: Pointer to BME280 Handler structure
+ * @param[in,out] measure_struct: Pointer to measurement config structure
+ * @return Function result status
+ */
+BME280_status_t BME280_normal_mode_enable(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct) {
+	if(measure_struct == NULL || bme_handler == NULL)	// Check correctness of input data
+		return BME280_ERROR;
+
+	measure_struct->mode = NORMAL_MODE;				// Set normal mode
+	bme_handler->current_config = measure_struct;	// Set received structure as current measurement config
+
+	uint8_t write_data = (SPI_3WIRE) | measure_struct->filter_coeff << 2 | measure_struct->standby_time << 5;	// Send filter coefficient, standby time
+	if(BME280_write_data(bme_handler, BME280_REG_CONFIG, 1, &write_data, 1) != BME280_OK)						// and spi mode to your sensor register
+		return BME280_ERROR;
+
+	write_data = measure_struct->hum_oversamp;
+	if(BME280_write_data(bme_handler, BME280_REG_CTRL_HUM, 1, &write_data, 1) != BME280_OK)		// Send humidity oversampling to your sensor
+		return BME280_ERROR;
+
+	write_data = BME280_NORMAL_MODE | measure_struct->press_oversamp << 2 | measure_struct->temp_oversamp << 5;
+	if(BME280_write_data(bme_handler, BME280_REG_CTRL_MEAS, 1, &write_data, 1) != BME280_OK)	// Send pressure and temperature oversampling to sensor
+		return BME280_ERROR;																	// and set normal mode
+
+	BME280_update_data_flow_info(measure_struct);	// Calculate data flow info and current consumption if it's necessary
+
+	return BME280_OK;
+}
+
+/**
+ * @brief The function is used to configure your sensor, enable forced mode (once measurement), calculate time parameters and current consumption,
+ * 		  wait for the calculated measurement time, read out and compensate desired data.
+ *
+ * @param[in,out] bme_handler: Pointer to BME280 Handler structure
+ * @param[in,out] measure_struct: Pointer to measurement config structure
+ * @return Function result status
+ */
+BME280_status_t BME280_once_measurement(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct) {
+	if(measure_struct == NULL || bme_handler == NULL)	// Check correctness of input data
+		return BME280_ERROR;
+
+	measure_struct->mode = FORCED_MODE;				// Set forced mode
+	bme_handler->current_config = measure_struct;	// Set received structure as current measurement config
+
+	uint8_t write_data = (SPI_3WIRE) | measure_struct->filter_coeff << 2;			// Send filter coefficient and spi mode to your sensor register
+	if(BME280_write_data(bme_handler, BME280_REG_CONFIG, 1, &write_data, 1) != BME280_OK)
+		return BME280_ERROR;
+
+	write_data = measure_struct->hum_oversamp;
+	if(BME280_write_data(bme_handler, BME280_REG_CTRL_HUM, 1, &write_data, 1) != BME280_OK)		// Send humidity oversampling to your sensor
+		return BME280_ERROR;
+
+	write_data = BME280_FORCED_MODE1 | measure_struct->press_oversamp << 2 | measure_struct->temp_oversamp << 5;
+	if(BME280_write_data(bme_handler, BME280_REG_CTRL_MEAS, 1, &write_data, 1) != BME280_OK)	// Send pressure and temperature oversampling to sensor
+		return BME280_ERROR;																	// and set forced mode
+
+	BME280_update_data_flow_info(measure_struct);	// Calculate data flow info and current consumption if it's necessary
+	BME280_delay(bme_handler, (uint32_t)BME280_ROUND_FLOAT_TO_INT(measure_struct->data_flow_info.IIR_response_time));	// Wait for correct conversations
+
+	if(BME280_read_comp_parameters(bme_handler, measure_struct) != BME280_OK)	// Read out and compensate register measurement data
+		return BME280_ERROR;
 
 	return BME280_OK;
 }
@@ -317,13 +438,9 @@ double BME280_compensate_temp_double(BME280_calibData_t *calib_data, int32_t unc
 	temperature = (var1 + var2) / 5120.0;
 
 	if (temperature < temperature_min)
-	{
 		temperature = temperature_min;
-	}
 	else if (temperature > temperature_max)
-	{
 		temperature = temperature_max;
-	}
 
 	return temperature;
 }
@@ -359,13 +476,9 @@ double BME280_compensate_press_double(BME280_calibData_t *calib_data, int32_t un
 	pressure = pressure + (var1 + var2 + ((double)calib_data->dig_P7)) / 16.0;
 
 	if (pressure < pressure_min)
-	{
 		pressure = pressure_min;
-	}
 	else if (pressure > pressure_max)
-	{
 		pressure = pressure_max;
-	}
 
 	return pressure;
 }
@@ -395,132 +508,11 @@ double BME280_compensate_hum_double(BME280_calibData_t *calib_data, int32_t unco
 	humidity = var6 * (1.0 - ((double)calib_data->dig_H1) * var6 / 524288.0);
 
 	if (humidity > humidity_max)
-	{
 		humidity = humidity_max;
-	}
 	else if (humidity < humidity_min)
-	{
 		humidity = humidity_min;
-	}
 
 	return humidity;
-}
-
-/**
- * @brief Function is used to read out measurement raw data, compensate necessary parameters and write it to corresponding structure.
- *
- * @param[in,out] bme_handler: Pointer to BME280 Handler structure
- * @param[in] measure_struct: Pointer to measurement config structure
- * @return Function result status
- */
-BME280_status_t BME280_read_comp_parameters(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct) {
-	uint8_t read_buffer[8];
-	if(BME280_readout_data(bme_handler, BME280_REG_PRESS_MSB, BME280_MEASURMENTS_DATA_LEN, read_buffer, (uint16_t)sizeof(read_buffer)) != BME280_OK)
-		return BME280_ERROR;
-
-#if ENABLE_DOUBLE_PRECISION == 1
-	if(measure_struct->press_oversamp != MEAS_SKIP) {
-		bme_handler->uncomp_parameters.uncomp_pressure = (read_buffer[0] << 12) | (read_buffer[1] << 4) | (read_buffer[2] >> 4);
-		bme_handler->comp_parameters.pressure = BME280_compensate_press_double(&bme_handler->calibration_data, \
-																			   bme_handler->uncomp_parameters.uncomp_pressure);
-	}
-	if(measure_struct->temp_oversamp != MEAS_SKIP) {
-		bme_handler->uncomp_parameters.uncomp_temperature = (read_buffer[3] << 12) | (read_buffer[4] << 4) | (read_buffer[5] >> 4);
-		bme_handler->comp_parameters.temperature = BME280_compensate_temp_double(&bme_handler->calibration_data, \
-																				 bme_handler->uncomp_parameters.uncomp_temperature);
-	}
-	if(measure_struct->hum_oversamp != MEAS_SKIP) {
-		bme_handler->uncomp_parameters.uncomp_humidity = (read_buffer[6] << 8) | read_buffer[7];
-		bme_handler->comp_parameters.humidity = BME280_compensate_hum_double(&bme_handler->calibration_data, bme_handler->uncomp_parameters.uncomp_humidity);
-	}
-#else
-	if(measure_struct->press_oversamp != MEAS_SKIP) {
-		bme_handler->uncomp_parameters.uncomp_pressure = (read_buffer[0] << 12) | (read_buffer[1] << 4) | (read_buffer[2] >> 4);
-	#if PRESSURE_32BIT_CALC == 0
-		bme_handler->comp_parameters.pressure = BME280_compensate_press_int64(&bme_handler->calibration_data, bme_handler->uncomp_parameters.uncomp_pressure);
-	#else
-		bme_handler->comp_parameters.pressure = BME280_compensate_press_int32(&bme_handler->calibration_data, bme_handler->uncomp_parameters.uncomp_pressure);
-	#endif /* End of #if PRESSURE_32BIT_CALC == 1*/
-	}
-	if(measure_struct->temp_oversamp != MEAS_SKIP) {
-		bme_handler->uncomp_parameters.uncomp_temperature = (read_buffer[3] << 12) | (read_buffer[4] << 4) | (read_buffer[5] >> 4);
-		bme_handler->comp_parameters.temperature = BME280_compensate_temp_int32(&bme_handler->calibration_data, \
-																				bme_handler->uncomp_parameters.uncomp_temperature);
-	}
-	if(measure_struct->hum_oversamp != MEAS_SKIP) {
-		bme_handler->uncomp_parameters.uncomp_humidity = (read_buffer[6] << 8) | read_buffer[7];
-		bme_handler->comp_parameters.humidity = BME280_compensate_hum_int32(&bme_handler->calibration_data, bme_handler->uncomp_parameters.uncomp_humidity);
-	}
-#endif /* End of #if ENABLE_DOUBLE_PRECISION == 1*/
-
-	return BME280_OK;
-}
-
-/**
- * @brief The function is used to configure your sensor, enable normal mode (periodic measurements), calculate time parameters and current consumption.
- *
- * @param[in,out] bme_handler: Pointer to BME280 Handler structure
- * @param[in,out] measure_struct: Pointer to measurement config structure
- * @return Function result status
- */
-BME280_status_t BME280_normal_mode_enable(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct) {
-	if(measure_struct == NULL || bme_handler == NULL)
-		return BME280_ERROR;
-
-	measure_struct->mode = NORMAL_MODE;
-	bme_handler->current_config = measure_struct;
-
-	uint8_t write_data = (SPI_3WIRE) | measure_struct->filter_coeff << 2 | measure_struct->standby_time << 5;
-	if(BME280_write_data(bme_handler, BME280_REG_CONFIG, 1, &write_data, 1) != BME280_OK)
-		return BME280_ERROR;
-
-	write_data = measure_struct->hum_oversamp;
-	if(BME280_write_data(bme_handler, BME280_REG_CTRL_HUM, 1, &write_data, 1) != BME280_OK)
-		return BME280_ERROR;
-
-	write_data = BME280_NORMAL_MODE | measure_struct->press_oversamp << 2 | measure_struct->temp_oversamp << 5;
-	if(BME280_write_data(bme_handler, BME280_REG_CTRL_MEAS, 1, &write_data, 1) != BME280_OK)
-		return BME280_ERROR;
-
-	BME280_update_data_flow_info(measure_struct);
-
-	return BME280_OK;
-}
-
-/**
- * @brief The function is used to configure your sensor, enable forced mode (once measurement), calculate time parameters and current consumption,
- * 		  wait for the calculated measurement time, read out and compensate desired data.
- *
- * @param[in,out] bme_handler: Pointer to BME280 Handler structure
- * @param[in,out] measure_struct: Pointer to measurement config structure
- * @return Function result status
- */
-BME280_status_t BME280_once_measurement(BME280_handler_t *bme_handler, BME280_measureConfig_t *measure_struct) {
-	if(measure_struct == NULL || bme_handler == NULL)
-		return BME280_ERROR;
-
-	measure_struct->mode = FORCED_MODE;
-	bme_handler->current_config = measure_struct;
-
-	uint8_t write_data = (SPI_3WIRE) | measure_struct->filter_coeff << 2;
-	if(BME280_write_data(bme_handler, BME280_REG_CONFIG, 1, &write_data, 1) != BME280_OK)
-		return BME280_ERROR;
-
-	write_data = measure_struct->hum_oversamp;
-	if(BME280_write_data(bme_handler, BME280_REG_CTRL_HUM, 1, &write_data, 1) != BME280_OK)
-		return BME280_ERROR;
-
-	write_data = BME280_FORCED_MODE1 | measure_struct->press_oversamp << 2 | measure_struct->temp_oversamp << 5;
-	if(BME280_write_data(bme_handler, BME280_REG_CTRL_MEAS, 1, &write_data, 1) != BME280_OK)
-		return BME280_ERROR;
-
-	BME280_update_data_flow_info(measure_struct);
-	BME280_delay(bme_handler, (uint32_t)BME280_ROUND_FLOAT_TO_INT(measure_struct->data_flow_info.measure_time));
-
-	if(BME280_read_comp_parameters(bme_handler, measure_struct) != BME280_OK)
-		return BME280_ERROR;
-
-	return BME280_OK;
 }
 
 /**
