@@ -1,6 +1,8 @@
 #include "bme280.h"
 #include <stdlib.h>
 
+#include "main.h"
+
 /**
  * @brief This functions is used to perform a delay. You should rewrite it if you want to use other delay function.
  *
@@ -8,7 +10,7 @@
  * @param[in] delay: Time delay in ms
  */
 __weak void BME280_delay(BME280_handler_t *bme_handler, uint32_t delay) {
-
+	HAL_Delay(delay);
 }
 
 /**
@@ -22,7 +24,14 @@ __weak void BME280_delay(BME280_handler_t *bme_handler, uint32_t delay) {
  * @return[in] Function result status
  */
 __weak BME280_status_t BME280_readout_data(BME280_handler_t *bme_handler, uint8_t reg_addr, uint16_t size, uint8_t *read_buffer, uint16_t read_data_len) {
+	if(size == 0 || size > read_data_len || bme_handler == NULL || read_buffer == NULL)
+		return BME280_ERROR;
 
+	if(HAL_I2C_Mem_Read((I2C_HandleTypeDef *)bme_handler->interface_handler, bme_handler->device_addr << 1, (uint16_t)reg_addr, I2C_MEMADD_SIZE_8BIT, \
+						read_buffer, size, HAL_MAX_DELAY) == HAL_BUSY)
+		return BME280_ERROR;
+
+	return BME280_OK;
 }
 
 /**
@@ -36,7 +45,34 @@ __weak BME280_status_t BME280_readout_data(BME280_handler_t *bme_handler, uint8_
  * @return Function result status
  */
 __weak BME280_status_t BME280_write_data(BME280_handler_t *bme_handler, uint8_t reg_addr, uint16_t size, uint8_t *write_data, uint16_t write_data_len) {
+	if(size == 0 || size > write_data_len || bme_handler == NULL || write_data == NULL)		// Checking input data correctness
+		return BME280_ERROR;
 
+	uint8_t *write_buffer;
+	size_t write_len = (size_t)size*2;
+
+	write_buffer = malloc(write_len);	 	// Allocating and filling buffer "register addr, data, ..."
+	if(write_buffer == NULL)
+		return BME280_ERROR;
+	uint8_t temp_reg = reg_addr;
+	for(int i = 0; i < write_len; i++) {
+		if(i % 2)
+			write_buffer[i] = write_data[i/2];
+		else {
+			write_buffer[i] = temp_reg;
+			temp_reg++;
+		}
+	}
+
+	HAL_StatusTypeDef result;			// Sending data result variable
+	result = HAL_I2C_Master_Transmit((I2C_HandleTypeDef *)bme_handler->interface_handler, bme_handler->device_addr << 1, write_buffer, \
+									write_len, HAL_MAX_DELAY);		// Sending filled buffer to the sensor
+	free(write_buffer);			// Freeing buffer memory
+
+	if(result != HAL_OK)		// Check sending data result variable
+		return BME280_ERROR;
+
+	return BME280_OK;
 }
 
 /**

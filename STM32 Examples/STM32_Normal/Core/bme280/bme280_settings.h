@@ -37,6 +37,6 @@
 /**
  * @brief Calculate current consumption together with other data flow and sensor info if set to 1. If set to 0 doesn't calculates this parameter.
  */
-#define UPDATE_CONSUMPTION_INFO 	0
+#define UPDATE_CONSUMPTION_INFO 	1
 
 #endif /* The end of #ifndef BME280_SETTINGS_H_ */
