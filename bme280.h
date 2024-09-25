@@ -1,6 +1,7 @@
 #ifndef BME280_H_
 #define BME280_H_
 
+#include <stdint.h>
 #include "bme280_settings.h"
 
 #define __weak   __attribute__((weak))
