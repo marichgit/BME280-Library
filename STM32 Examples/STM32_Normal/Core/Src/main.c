@@ -103,14 +103,19 @@ int main(void) {
 
 	BME280_normal_mode_enable(&bme280_hdl, &measure_cfg);	// Enabling normal mode (continuous measurements)
 	BME280_delay(&bme280_hdl, bme280_hdl.current_config->data_flow_info.IIR_response_time);		// Waiting for correct measurements to be established
+	BME280_read_comp_parameters(&bme280_hdl, &measure_cfg);		// Reading out and compensating measurement data
+	float period = bme280_hdl.current_config->data_flow_info.measure_time + bme280_hdl.current_config->data_flow_info.standby_time;
+	char output[60];	// Buffer for sending sensor data via UART
+	int size;			// Output buffer size variable
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	while (1) {
-		BME280_read_comp_parameters(&bme280_hdl, &measure_cfg);		// Reading out and compensating measurement data
-		char output[60];	// Buffer for sending sensor data via UART
-		int size;			// Output buffer size variable
+		// Waiting for next measurement to be performed
+		BME280_delay(&bme280_hdl, period);
+		BME280_read_comp_parameters(&bme280_hdl, &measure_cfg);
+
 		while(HAL_UART_GetState(&huart1) != HAL_UART_STATE_READY);	// Waiting for UART module to be free
 
 #if ENABLE_DOUBLE_PRECISION == 1	// Filling output buffer depending on the compensation mode setting
@@ -122,7 +127,6 @@ int main(void) {
 #endif
 		HAL_UART_Transmit_IT(&huart1, output, size);	// Sending output buffer data via UART
 
-		BME280_delay(&bme280_hdl, bme280_hdl.current_config->data_flow_info.measure_time);	// Waiting for next measurement to be performed
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
@@ -213,7 +217,7 @@ static void MX_USART1_UART_Init(void) {
 
 	/* USER CODE END USART1_Init 1 */
 	huart1.Instance = USART1;
-	huart1.Init.BaudRate = 115200;
+	huart1.Init.BaudRate = 56000;
 	huart1.Init.WordLength = UART_WORDLENGTH_8B;
 	huart1.Init.StopBits = UART_STOPBITS_1;
 	huart1.Init.Parity = UART_PARITY_NONE;

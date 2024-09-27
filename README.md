@@ -4,11 +4,11 @@
  This library is an API for the BME280 humidity, temperature and pressure sensor. The library can be used for: measurements in both single (forced) and continuous (normal) modes for a user-defined configuration; calculation of current consumption, time and frequency parameters of measurements; soft reset of the sensor and swithing to sleep mode; independent work with registers. The user has the ability to independently configure the interface for communicating with the sensor, select methods for compensating for raw measurements and formulas for calculating some parameters. Since the functions of a low layer of communication with the sensor are defined by the user, the library is universal and can be used on various microcontrollers. If your project is written for STM32, you can use the code from the examples in the *Examples* folder.
 
 ### Library structure:
-*bme280.c* - mian c-file containing function definitions.  
+*bme280.c* - main c-file containing function definitions.  
 *bme280.h* - main header file containing definitions of structures, enum types, macros  
 *bme280_settings.h* - file to customize the library for your project.  
 *Examples* - folder with example projects using this library. Includes:  
-> STM32_Normal - example of using the sensor in normal mode. For I2C communication, HAL functions are used in blocking mode. 
+- STM32_Normal - example of using the sensor in normal mode. For I2C communication, HAL functions are used in blocking mode. 
 
 You can read more about how the library works in the files.
 
