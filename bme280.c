@@ -409,85 +409,42 @@ double BME280_compensate_temp_double(BME280_calibData_t *calib_data, int32_t unc
 	return temperature;
 }
 
-///**
-// * @brief Functions is used to compensate pressure raw data using double calculation.
-// * 		  If result pressure value is out of operating range the edge value is taken. Gives the best possible accuracy but requires the biggest
-// * 		  number of clocks. Therefore only recommended for PC applications.
-// *
-// * @param[in] calib_data: Pointer to calibration data structure
-// * @param[in] uncomp_press: 20 bit positive pressure raw data
-// * @return Compensated pressure double value.
-// */
-//double BME280_compensate_press_double(BME280_calibData_t *calib_data, int32_t uncomp_press) {
-//	double var1, var2, var3, pressure;
-//	double pressure_min = (double)BME280_PRESSURE_MIN;
-//	double pressure_max = (double)BME280_PRESSURE_MAX;
-//
-//	var1 = ((double)t_fine / 2.0) - 64000.0;
-//	var2 = var1 * var1 * ((double)calib_data->dig_P6) / 32768.0;
-//	var2 = var2 + var1 * ((double)calib_data->dig_P5) * 2.0;
-//	var2 = (var2 / 4.0) + (((double)calib_data->dig_P4) * 65536.0);
-//	var3 = ((double)calib_data->dig_P3) * var1 * var1 / 524288.0;
-//	var1 = (var3 + ((double)calib_data->dig_P2) * var1) / 524288.0;
-//	var1 = (1.0 + var1 / 32768.0) * ((double)calib_data->dig_P1);
-//
-//	if (var1 == 0)
-//		return 0;
-//	pressure = 1048576.0 - (double)uncomp_press;
-//	pressure = (pressure - (var2 / 4096.0)) * 6250.0 / var1;
-//	var1 = ((double)calib_data->dig_P9) * pressure * pressure / 2147483648.0;
-//	var2 = pressure * ((double)calib_data->dig_P8) / 32768.0;
-//	pressure = pressure + (var1 + var2 + ((double)calib_data->dig_P7)) / 16.0;
-//
-//	if (pressure < pressure_min)
-//		pressure = pressure_min;
-//	else if (pressure > pressure_max)
-//		pressure = pressure_max;
-//
-//	return pressure;
-//}
+/**
+* @brief Functions is used to compensate pressure raw data using double calculation.
+* 		  If result pressure value is out of operating range the edge value is taken. Gives the best possible accuracy but requires the biggest
+* 		  number of clocks. Therefore only recommended for PC applications.
+*
+* @param[in] calib_data: Pointer to calibration data structure
+* @param[in] uncomp_press: 20 bit positive pressure raw data
+* @return Compensated pressure double value.
+*/
+double BME280_compensate_press_double(BME280_calibData_t *calib_data, int32_t uncomp_press) {
+	double var1, var2, var3, pressure;
+	double pressure_min = (double)BME280_PRESSURE_MIN;
+	double pressure_max = (double)BME280_PRESSURE_MAX;
 
-double BME280_compensate_press_double(BME280_calibData_t *calib_data, int32_t uncomp_press)
-{
-    double var1;
-    double var2;
-    double var3;
-    double pressure;
-    double pressure_min = 30000.0;
-    double pressure_max = 110000.0;
+	var1 = ((double)t_fine / 2.0) - 64000.0;
+	var2 = var1 * var1 * ((double)calib_data->dig_P6) / 32768.0;
+	var2 = var2 + var1 * ((double)calib_data->dig_P5) * 2.0;
+	var2 = (var2 / 4.0) + (((double)calib_data->dig_P4) * 65536.0);
+	var3 = ((double)calib_data->dig_P3) * var1 * var1 / 524288.0;
+	var1 = (var3 + ((double)calib_data->dig_P2) * var1) / 524288.0;
+	var1 = (1.0 + var1 / 32768.0) * ((double)calib_data->dig_P1);
 
-    var1 = ((double)t_fine / 2.0) - 64000.0;
-    var2 = var1 * var1 * ((double)calib_data->dig_P6) / 32768.0;
-    var2 = var2 + var1 * ((double)calib_data->dig_P5) * 2.0;
-    var2 = (var2 / 4.0) + (((double)calib_data->dig_P4) * 65536.0);
-    var3 = ((double)calib_data->dig_P3) * var1 * var1 / 524288.0;
-    var1 = (var3 + ((double)calib_data->dig_P2) * var1) / 524288.0;
-    var1 = (1.0 + var1 / 32768.0) * ((double)calib_data->dig_P1);
+	if (var1 == 0)
+		return 0;
+	pressure = 1048576.0 - (double)uncomp_press;
+	pressure = (pressure - (var2 / 4096.0)) * 6250.0 / var1;
+	var1 = ((double)calib_data->dig_P9) * pressure * pressure / 2147483648.0;
+	var2 = pressure * ((double)calib_data->dig_P8) / 32768.0;
+	pressure = pressure + (var1 + var2 + ((double)calib_data->dig_P7)) / 16.0;
 
-    /* Avoid exception caused by division by zero */
-    if (var1 > (0.0))
-    {
-        pressure = 1048576.0 - (double)uncomp_press;
-        pressure = (pressure - (var2 / 4096.0)) * 6250.0 / var1;
-        var1 = ((double)calib_data->dig_P9) * pressure * pressure / 2147483648.0;
-        var2 = pressure * ((double)calib_data->dig_P8) / 32768.0;
-        pressure = pressure + (var1 + var2 + ((double)calib_data->dig_P7)) / 16.0;
+	if (pressure < pressure_min)
+		pressure = pressure_min;
+	else if (pressure > pressure_max)
+		pressure = pressure_max;
 
-        if (pressure < pressure_min)
-        {
-            pressure = pressure_min;
-        }
-        else if (pressure > pressure_max)
-        {
-            pressure = pressure_max;
-        }
-    }
-    else /* Invalid case */
-    {
-        pressure = pressure_min;
-    }
-
-    return pressure;
+	return pressure;
 }
 
 /**
